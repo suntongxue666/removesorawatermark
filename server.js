@@ -208,7 +208,7 @@ async function runPredictionWithUrl(videoUrl) {
   const startResp = await fetch(endpoint, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${REPLICATE_API_TOKEN}`,
+      Authorization: `Token ${REPLICATE_API_TOKEN}`,
       "Content-Type": "application/json"
     },
     body: JSON.stringify(body)
@@ -236,7 +236,7 @@ async function runPredictionWithUrl(videoUrl) {
 
     const pollResp = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
       headers: {
-        Authorization: `Bearer ${REPLICATE_API_TOKEN}`
+        Authorization: `Token ${REPLICATE_API_TOKEN}`
       }
     });
 
