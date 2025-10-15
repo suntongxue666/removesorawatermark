@@ -12,6 +12,14 @@
     .glass { background: rgba(255,255,255,0.75); backdrop-filter: saturate(180%) blur(10px); }
     .badge { border-radius: 10px; padding: 4px 10px; font-size: 12px; font-weight: 600; color: #fff; }
   </style>
+  <!-- Google tag (gtag.js) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-880Y82CR4N"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-880Y82CR4N');
+  </script>
 </head>
 <body class="min-h-screen bg-white text-gray-900">
   <!-- Header -->
@@ -50,7 +58,7 @@
       <!-- Upload Card -->
       <div class="rounded-2xl border border-gray-200 p-6">
         <h2 class="text-base font-semibold">Upload Video</h2>
-        <div id="dropZone" class="mt-4 rounded-xl border-2 border-dashed border-gray-300 p-6 text-center cursor-pointer h-72">
+        <div id="dropZone" class="mt-4 rounded-xl border-2 border-dashed border-gray-300 p-6 text-center cursor-pointer h-72 overflow-hidden">
           <input id="fileInput" type="file" accept="video/mp4,video/quicktime,video/*" class="hidden" />
           <div id="uploadEmpty" class="flex flex-col items-center">
             <div class="h-12 w-12 border-2 border-gray-400 rounded-lg flex items-center justify-center">
@@ -59,7 +67,7 @@
             <p class="mt-3 text-sm text-gray-700">Click to browse<br/>or drop the video here</p>
             <p class="mt-2 text-xs text-gray-500">MOV/MP4, ≤10s, ≤30MB</p>
           </div>
-          <video id="uploadPreview" class="hidden w-full max-h-72 bg-black rounded-xl" controls muted playsinline></video>
+          <video id="uploadPreview" class="hidden w-full h-full bg-black rounded-xl object-contain" controls muted playsinline></video>
         </div>
         <div class="mt-4 flex items-center gap-3">
           <button id="btnSubmitUpload" class="px-5 py-2 rounded-xl bg-black text-white hover:bg-gray-800">Remove watermark</button>
@@ -80,7 +88,7 @@
       <!-- Result Card -->
       <div class="rounded-2xl border border-gray-200 p-6">
         <h2 class="text-base font-semibold">Result</h2>
-        <div class="mt-4 rounded-xl border-2 border-dashed border-gray-300 p-6 text-center h-72 relative">
+        <div class="mt-4 rounded-xl border-2 border-dashed border-gray-300 p-6 text-center h-72 overflow-hidden">
           <video id="afterVideo" class="w-full h-full bg-black rounded-xl hidden object-contain" controls playsinline></video>
           <div id="resultEmpty" class="flex flex-col items-center">
             <div class="h-12 w-12 border-2 border-gray-400 rounded-lg flex items-center justify-center">
@@ -118,8 +126,8 @@
         <h2 class="text-base font-semibold">Before & After showcase</h2>
         <p class="mt-2 text-sm text-gray-600">Compare original and cleaned output side-by-side.</p>
         <div class="mt-4 grid md:grid-cols-2 gap-4">
-          <video class="w-full h-64 bg-black rounded-xl" controls></video>
-          <video class="w-full h-64 bg-black rounded-xl" controls></video>
+          <video class="w-full h-64 bg-black rounded-xl object-contain" controls></video>
+          <video class="w-full h-64 bg-black rounded-xl object-contain" controls></video>
         </div>
       </div>
     </section>
@@ -218,18 +226,6 @@
     if (API_BASE.includes("dashboard.render.com")) {
       console.warn("API_BASE points to Render dashboard; use your onrender.com service URL.");
     }
-    if (btnToggleLogs) {
-      btnToggleLogs.addEventListener("click", () => {
-        const hidden = logsBox.classList.contains("hidden");
-        if (hidden) {
-          logsBox.classList.remove("hidden");
-          btnToggleLogs.textContent = "Hide details";
-        } else {
-          logsBox.classList.add("hidden");
-          btnToggleLogs.textContent = "Show details";
-        }
-      });
-    }
 
     // Drag & drop
     dropZone.addEventListener("click", () => fileInput.click());
@@ -319,8 +315,13 @@
         const form = new FormData();
         form.append("file", file, file.name);
         const resp = await fetch(apiUrl("/api/remove"), { method: "POST", body: form });
-        const data = await resp.json();
-        if (!resp.ok) throw new Error(data.error || "Request failed");
+        const raw = await resp.text();
+        let data = null;
+        try { data = JSON.parse(raw); } catch {
+          // 后端返回非JSON（如HTML错误页）时，直接抛出文本摘要
+          throw new Error(raw.slice(0, 200) || "Response is not valid JSON");
+        }
+        if (!resp.ok) throw new Error((data && data.error) || (raw.slice(0, 200)) || "Request failed");
 
         const output = data.output;
         let afterUrl = null;
@@ -330,7 +331,9 @@
 
         if (!afterUrl) throw new Error("No output URL returned.");
         showResult(afterUrl);
-        logsBox.textContent = data.logs || "";
+        if (data.logs) {
+          logsBox.textContent = data.logs;
+        }
         finishProgress();
       } catch (e) {
         alert(e.message || "Error");
@@ -356,6 +359,23 @@
       btnDownload.classList.add("pointer-events-none", "opacity-50");
       btnDownload.href = "#";
       logsBox.textContent = "";
+      logsBox.classList.add("hidden");
+      const btn = btnToggleLogs;
+      if (btn) btn.textContent = "Show details";
+    }
+
+    // Logs toggle
+    if (btnToggleLogs) {
+      btnToggleLogs.addEventListener("click", () => {
+        const hidden = logsBox.classList.contains("hidden");
+        if (hidden) {
+          logsBox.classList.remove("hidden");
+          btnToggleLogs.textContent = "Hide details";
+        } else {
+          logsBox.classList.add("hidden");
+          btnToggleLogs.textContent = "Show details";
+        }
+      });
     }
   </script>
 </body>
