@@ -164,11 +164,31 @@ async function uploadToReplicate(fileBuffer, filename) {
     }
     const j = await r2.json().catch(() => ({}));
     let url = j?.data?.url || j?.url;
-    // tmpfiles 下载直链需要 /dl/
-    if (url && url.startsWith("https://tmpfiles.org/")) {
-      url = url.replace("https://tmpfiles.org/", "https://tmpfiles.org/dl/");
-    }
+
+    // 规范化 tmpfiles 链接：
+    // 1) 强制 https
+    // 2) 将页面 URL 格式 https://tmpfiles.org/<id> 规范为直链 https://tmpfiles.org/dl/<id>
+    // 3) 对 http 或包含其他路径（如 download5.mp4）的情况，尽量提取第一个路径段作为 id
     if (url) {
+      try {
+        // 强制 https
+        url = url.replace(/^http:\/\//, "https://");
+
+        // 如果是 https://tmpfiles.org/<id>[...]
+        const m = url.match(/^https:\/\/tmpfiles\.org\/([^\/\?\#]+)/);
+        if (m) {
+          const id = m[1];
+          url = `https://tmpfiles.org/dl/${id}`;
+        } else if (/https:\/\/tmpfiles\.org\/dl\//.test(url)) {
+          // 已经是直链，保持
+        } else if (/tmpfiles\.org/.test(url)) {
+          // 回退：若包含 tmpfiles 域但格式异常，尝试保留为 https
+          // 不再额外处理，让模型去取；日志中能看到最终 URL
+        }
+      } catch (e) {
+        console.warn("tmpfiles url normalize error:", e?.message || e);
+      }
+
       console.log("tmpfiles upload ok ->", url);
       return url;
     }
