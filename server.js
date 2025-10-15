@@ -27,6 +27,9 @@ const upload = multer({
  // Environment variables
 const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN;
 const REPLICATE_MODEL_VERSION = process.env.REPLICATE_MODEL_VERSION;
+// Optional stable video hosting: Cloudinary unsigned upload
+const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME || "";
+const CLOUDINARY_UPLOAD_PRESET = process.env.CLOUDINARY_UPLOAD_PRESET || "";
 // You must set both before running in production
 
 // Parse model/version from combined env like "uglyrobot/sora2-watermark-remover:VERSION_HASH"
@@ -68,6 +71,37 @@ async function uploadToReplicate(fileBuffer, filename) {
     lower.endsWith(".mov") ? "video/quicktime" :
     lower.endsWith(".mp4") ? "video/mp4" :
     "video/mp4";
+
+  // 0) 优先：Cloudinary unsigned upload（稳定直链 https）
+  try {
+    if (CLOUDINARY_CLOUD_NAME && CLOUDINARY_UPLOAD_PRESET) {
+      const fd = new FormData();
+      fd.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+      fd.append("file", fileBuffer, {
+        filename: filename || "upload.mp4",
+        contentType
+      });
+      const headers = fd.getHeaders();
+      const resp = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`, {
+        method: "POST",
+        headers,
+        body: fd
+      });
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => "");
+        throw new Error(`cloudinary upload failed: ${resp.status} ${text}`);
+      }
+      const j = await resp.json().catch(() => ({}));
+      const url = (j.secure_url || j.url || "").replace(/^http:\/\//, "https://");
+      if (url) {
+        console.log("cloudinary upload ok ->", url);
+        return url;
+      }
+      console.warn("cloudinary upload returned no url", j);
+    }
+  } catch (e) {
+    console.error("cloudinary upload error:", e?.message || e);
+  }
 
   // 1) 稳定托管：catbox.moe
   try {
