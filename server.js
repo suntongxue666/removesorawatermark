@@ -69,97 +69,7 @@ async function uploadToReplicate(fileBuffer, filename) {
     lower.endsWith(".mp4") ? "video/mp4" :
     "video/mp4";
 
-  // 1) 优先：multipart 直传 /v1/files（Node 环境使用 form-data，并显式设置 headers）
-  try {
-    const fd = new FormData();
-    fd.append("file", fileBuffer, {
-      filename: filename || "upload.mp4",
-      contentType
-    });
-    // 合并 form-data 生成的 Content-Type（含 boundary）
-    const headers = fd.getHeaders({ Authorization: `Bearer ${REPLICATE_API_TOKEN}` });
-    // 计算 Content-Length，部分服务器要求
-    try {
-      const len = await new Promise((resolve, reject) => {
-        fd.getLength((err, length) => (err ? reject(err) : resolve(length)));
-      });
-      headers["Content-Length"] = String(len);
-    } catch (_) {
-      // 忽略长度计算失败，继续尝试
-    }
-
-    const resp = await fetch("https://api.replicate.com/v1/files", {
-      method: "POST",
-      headers,
-      body: fd
-    });
-
-    if (!resp.ok) {
-      const text = await resp.text();
-      throw new Error(`Replicate multipart upload failed: ${resp.status} ${text}`);
-    }
-
-    const data = await resp.json();
-    const serveUrl =
-      data.serve_url || data.serving_url || data.url || data.download_url || data.file?.url;
-
-    if (serveUrl) {
-      console.log("Replicate multipart upload ok ->", serveUrl);
-      return serveUrl;
-    }
-    console.warn("Replicate multipart upload returned no serve URL, falling back...", data);
-  } catch (e) {
-    console.error("Replicate multipart upload error:", e?.message || e);
-  }
-
-  // 2) 次选：创建上传槽 + PUT 原始字节（某些账户策略下可用）
-  try {
-    const initResp = await fetch("https://api.replicate.com/v1/files", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${REPLICATE_API_TOKEN}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        name: filename || "upload.mp4",
-        content_type: contentType
-      })
-    });
-
-    if (!initResp.ok) {
-      const text = await initResp.text();
-      throw new Error(`Replicate upload init failed: ${initResp.status} ${text}`);
-    }
-
-    const initData = await initResp.json();
-    const uploadUrl = initData.upload_url;
-    const serveUrl = initData.serve_url || initData.serving_url || initData.url;
-
-    if (!uploadUrl || !serveUrl) {
-      throw new Error(`Replicate upload init missing URLs: ${JSON.stringify(initData)}`);
-    }
-
-    const putResp = await fetch(uploadUrl, {
-      method: "PUT",
-      headers: {
-        "Content-Type": contentType,
-        "Content-Length": String(fileBuffer.length)
-      },
-      body: fileBuffer
-    });
-
-    if (!putResp.ok) {
-      const text = await putResp.text().catch(() => "");
-      throw new Error(`Replicate upload PUT failed: ${putResp.status} ${text}`);
-    }
-
-    console.log("Replicate signed PUT upload ok ->", serveUrl);
-    return serveUrl;
-  } catch (err) {
-    console.error("Replicate signed PUT upload error:", err?.message || err);
-  }
-
-  // 3) 回退：catbox.moe（稳定直链，可匿名访问）
+  // 1) 稳定托管：catbox.moe
   try {
     const fdCat = new FormData();
     fdCat.append("reqtype", "fileupload");
@@ -178,7 +88,6 @@ async function uploadToReplicate(fileBuffer, filename) {
       throw new Error(`catbox upload failed: ${respCat.status} ${text}`);
     }
     const catUrl = (await respCat.text()).trim().replace(/^http:\/\//, "https://");
-    // 返回一般为 https://files.catbox.moe/xxxxxx.mp4
     if (catUrl && /^https:\/\/files\.catbox\.moe\//.test(catUrl)) {
       console.log("catbox upload ok ->", catUrl);
       return catUrl;
@@ -188,7 +97,7 @@ async function uploadToReplicate(fileBuffer, filename) {
     console.error("catbox upload error:", e?.message || e);
   }
 
-  // 4) 回退：tmpfiles.org（较稳定的匿名直链）
+  // 2) 次选：tmpfiles.org（规范成直链）
   try {
     const fd2 = new FormData();
     fd2.append("file", fileBuffer, {
@@ -206,21 +115,10 @@ async function uploadToReplicate(fileBuffer, filename) {
     }
     const j = await r2.json().catch(() => ({}));
     let url = j?.data?.url || j?.url;
-
-    // 规范化 tmpfiles 链接为直链
     if (url) {
-      try {
-        // 强制 https
-        url = url.replace(/^http:\/\//, "https://");
-        // https://tmpfiles.org/<id> -> https://tmpfiles.org/dl/<id>
-        const m = url.match(/^https:\/\/tmpfiles\.org\/([^\/\?\#]+)/);
-        if (m) {
-          const id = m[1];
-          url = `https://tmpfiles.org/dl/${id}`;
-        }
-      } catch (e) {
-        console.warn("tmpfiles url normalize error:", e?.message || e);
-      }
+      url = url.replace(/^http:\/\//, "https://");
+      const m = url.match(/^https:\/\/tmpfiles\.org\/([^\/\?\#]+)/);
+      if (m) url = `https://tmpfiles.org/dl/${m[1]}`;
       console.log("tmpfiles upload ok ->", url);
       return url;
     }
@@ -229,7 +127,7 @@ async function uploadToReplicate(fileBuffer, filename) {
     console.error("tmpfiles upload error:", e?.message || e);
   }
 
-  // 5) 最后回退：transfer.sh（若 Render 网络允许）
+  // 3) 最后回退：transfer.sh
   try {
     const rawName = (filename || "upload.mp4").toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9._-]/g, "-");
     const safeName = encodeURIComponent(rawName);
@@ -253,18 +151,15 @@ async function uploadToReplicate(fileBuffer, filename) {
     console.error("transfer.sh upload error:", e?.message || e);
   }
 
-  throw new Error("All upload strategies failed (Replicate multipart, signed PUT, catbox.moe, tmpfiles.org, transfer.sh).");
+  throw new Error("All upload strategies failed (catbox.moe, tmpfiles.org, transfer.sh).");
 }
 
 // Start a prediction and poll until completed
 async function runPredictionWithUrl(videoUrl) {
-  // When using model-version endpoint, body should only include input
-  // To maximize compatibility across versions, include multiple commonly used keys.
+  // 简化为该模型文档示例：仅传 input.video
   const body = {
     input: {
-      video: videoUrl,
-      video_url: videoUrl,
-      input_video: videoUrl
+      video: videoUrl
     }
   };
 
