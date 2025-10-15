@@ -1,6 +1,7 @@
 import express from "express";
 import multer from "multer";
 import fetch from "node-fetch";
+import FormData from "form-data";
 
 const app = express();
 
@@ -68,17 +69,19 @@ async function uploadToReplicate(fileBuffer, filename) {
     lower.endsWith(".mp4") ? "video/mp4" :
     "video/mp4";
 
-  // 1) 优先：multipart 直传 /v1/files（Replicate 新推荐）
+  // 1) 优先：multipart 直传 /v1/files（Node 环境使用 form-data）
   try {
     const fd = new FormData();
-    const blob = new Blob([fileBuffer], { type: contentType });
-    fd.append("file", blob, filename || "upload.mp4");
+    fd.append("file", fileBuffer, {
+      filename: filename || "upload.mp4",
+      contentType
+    });
 
     const resp = await fetch("https://api.replicate.com/v1/files", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${REPLICATE_API_TOKEN}`
-        // 不要手动设置 Content-Type，fetch 会自动加 boundary
+        // 不手动设置 Content-Type，node-fetch 会携带 multipart 边界
       },
       body: fd
     });
@@ -96,7 +99,6 @@ async function uploadToReplicate(fileBuffer, filename) {
       console.log("Replicate multipart upload ok ->", serveUrl);
       return serveUrl;
     }
-    // 如果没有可用直链，继续尝试第二策略
     console.warn("Replicate multipart upload returned no serve URL, falling back...", data);
   } catch (e) {
     console.error("Replicate multipart upload error:", e?.message || e);
