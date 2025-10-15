@@ -4,179 +4,117 @@
   <meta charset="utf-8">
   <title>Sora Watermark Cleaner</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <meta name="description" content="Remove Sora short-video watermark online. Paste URL or upload a short video (≤10s, ≤30MB). Fast, clean, privacy-friendly.">
-  <meta name="api-base" content="https://removesorawatermark.onrender.com">
+  <meta name="description" content="Remove Sora short-video watermark online. Upload a short video (≤10s, ≤30MB). Fast, clean, privacy-friendly.">
+  <meta name="api-base" content="">
   <link rel="icon" href="data:,">
   <style>
-    /* Subtle Apple-like vibe + a bit of glass */
-    .glass {
-      background: rgba(255,255,255,0.7);
-      backdrop-filter: saturate(180%) blur(12px);
-    }
-    .gradient {
-      background: radial-gradient(1200px 600px at 10% 20%, rgba(99,102,241,0.15), transparent 50%),
-                  radial-gradient(800px 400px at 90% 10%, rgba(16,185,129,0.15), transparent 50%);
-    }
+    .glass { background: rgba(255,255,255,0.75); backdrop-filter: saturate(180%) blur(10px); }
+    .badge { border-radius: 10px; padding: 4px 10px; font-size: 12px; font-weight: 600; color: #fff; }
   </style>
 </head>
-<body class="min-h-screen bg-gray-50 gradient text-gray-900">
+<body class="min-h-screen bg-white text-gray-900">
+  <!-- Header -->
   <header class="w-full">
     <div class="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <div class="h-8 w-8 rounded-xl bg-black"></div>
-        <span class="font-semibold text-lg">Sora Watermark Cleaner</span>
+        <div class="h-6 w-6 rounded-md bg-black"></div>
+        <span class="font-semibold text-base">Removesorawatermark</span>
       </div>
       <nav class="text-sm text-gray-600">
-        <a href="#features" class="hover:text-gray-900 mr-6">Features</a>
-        <a href="#tech" class="hover:text-gray-900 mr-6">Tech</a>
-        <a href="#showcase" class="hover:text-gray-900 mr-6">Showcase</a>
-        <a href="#qa" class="hover:text-gray-900">Q&A</a>
+        <a href="#" class="hover:text-black mr-6">Home</a>
+        <a href="#features" class="hover:text-black mr-6">Feature</a>
+        <a href="#showcase" class="hover:text-black mr-6">Showcase</a>
+        <a href="#qa" class="hover:text-black">FAQ</a>
       </nav>
     </div>
   </header>
 
   <main class="max-w-6xl mx-auto px-6">
-    <!-- Hero -->
-    <section class="mt-10 mb-8">
-      <div class="glass rounded-3xl p-8 shadow-sm">
-        <div class="grid md:grid-cols-2 gap-8 items-center">
-          <div>
-            <h1 class="text-3xl md:text-4xl font-semibold tracking-tight">Remove Sora watermark in seconds</h1>
-            <p class="mt-4 text-gray-700">Paste the Sora video URL or upload a short clip (≤10s, ≤30MB). Your converted video is stored temporarily.</p>
-            <div class="mt-6 flex items-center gap-3">
-              <button id="btnScrollUrl" class="px-4 py-2 rounded-xl bg-black text-white hover:bg-gray-800 transition">Paste URL</button>
-              <button id="btnScrollUpload" class="px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-900 hover:bg-gray-100 transition">Upload Video</button>
-            </div>
-          </div>
-          <div class="rounded-2xl overflow-hidden border border-gray-200">
-            <video id="heroVideo" class="w-full h-64 object-cover bg-black" controls muted playsinline>
-              <!-- Placeholder poster -->
-            </video>
-          </div>
-        </div>
+    <!-- Title + badges -->
+    <section class="text-center mt-2 mb-6">
+      <h1 class="text-2xl md:text-3xl font-semibold tracking-tight">Remove Sora Watermark</h1>
+      <p class="mt-2 text-gray-700">Sora watermark remover with AI-Power, Free, Quickly and High-Quality</p>
+      <div class="mt-4 flex flex-wrap items-center justify-center gap-3">
+        <span class="badge" style="background:#ef4444">100% Automatic</span>
+        <span class="badge" style="background:#10b981">100% Private</span>
+        <span class="badge" style="background:#3b82f6">HD Quality</span>
+        <span class="badge" style="background:#f59e0b">Preserves Audio</span>
+        <span class="badge" style="background:#8b5cf6">Lightning Fast</span>
+        <span class="badge" style="background:#0f766e">More Formats</span>
       </div>
     </section>
 
-    <!-- URL Mode -->
-    <section id="urlSection" class="mt-10">
-      <div class="glass rounded-3xl p-6 shadow-sm">
-        <h2 class="text-xl font-semibold">Remove via URL</h2>
-        <p class="mt-2 text-sm text-gray-600">Paste a Sora video URL below. Click Clear to reset the input.</p>
-        <div class="mt-4 flex gap-3">
-          <input id="urlInput" type="url" placeholder="https://example.com/sora-video.mp4" class="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-black" />
-          <button id="btnClearUrl" class="px-4 py-3 rounded-xl border border-gray-200 hover:bg-gray-100">Clear</button>
-          <button id="btnSubmitUrl" class="px-4 py-3 rounded-xl bg-black text-white hover:bg-gray-800">Remove Watermark</button>
-        </div>
-        <p id="urlHint" class="mt-2 text-xs text-gray-500">We process the video via Replicate API. Converted files are temporary.</p>
-        <!-- API health diagnostic -->
-        <div class="mt-3 flex items-center gap-3 text-xs">
-          <button id="apiHealthBtn" class="px-3 py-2 rounded-lg bg-black text-white hover:bg-gray-800">Check API Health</button>
-          <span id="apiHealthOut" class="text-gray-600">Backend: auto-detected</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- Upload Mode with toggle -->
-    <section id="uploadSection" class="mt-10">
-      <div class="glass rounded-3xl p-6 shadow-sm">
-        <h2 class="text-xl font-semibold">Remove via Upload</h2>
-        <p class="mt-2 text-sm text-gray-600">Upload a short video (MOV/MP4 etc., ≤10s, ≤30MB) or paste a URL.</p>
-
-        <!-- Tabs -->
-        <div class="mt-4 flex gap-2">
-          <button id="tabUpload" class="px-4 py-2 rounded-xl bg-black text-white hover:bg-gray-800">Upload</button>
-          <button id="tabPasteUrl" class="px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-900 hover:bg-gray-100">Paste URL</button>
-        </div>
-
-        <div class="mt-4 grid md:grid-cols-2 gap-4">
-          <!-- Left column: Upload block -->
-          <div id="uploadBlock" class="border border-dashed border-gray-300 rounded-2xl p-6 text-center">
-            <input id="fileInput" type="file" accept="video/mp4,video/quicktime,video/*" class="hidden" />
-            <div class="flex flex-col items-center">
-              <div class="h-16 w-16 rounded-xl bg-gray-200 mb-3"></div>
-              <p class="text-gray-700">Drag & drop your video here</p>
-              <p class="text-xs text-gray-500">or</p>
-              <button id="btnPickFile" class="mt-2 px-4 py-2 rounded-xl bg-white border border-gray-200 hover:bg-gray-100">Choose File</button>
+    <!-- Core two-column cards -->
+    <section class="grid md:grid-cols-2 gap-8">
+      <!-- Upload Card -->
+      <div class="rounded-2xl border border-gray-200 p-6">
+        <h2 class="text-base font-semibold">Upload Video</h2>
+        <div id="dropZone" class="mt-4 rounded-xl border-2 border-dashed border-gray-300 p-6 text-center cursor-pointer">
+          <input id="fileInput" type="file" accept="video/mp4,video/quicktime,video/*" class="hidden" />
+          <div id="uploadEmpty" class="flex flex-col items-center">
+            <div class="h-12 w-12 border-2 border-gray-400 rounded-lg flex items-center justify-center">
+              <span class="text-2xl text-gray-600">↑</span>
             </div>
+            <p class="mt-3 text-sm text-gray-700">Click to browse<br/>or drop the video here</p>
+            <p class="mt-2 text-xs text-gray-500">MOV/MP4, ≤10s, ≤30MB</p>
           </div>
-
-          <!-- Right column: preview & submit (unchanged) -->
-          <div class="flex flex-col">
-            <video id="uploadPreview" class="w-full h-48 bg-black rounded-xl" controls muted></video>
-            <div class="mt-3 flex gap-3">
-              <button id="btnSubmitUpload" class="px-4 py-3 rounded-xl bg-black text-white hover:bg-gray-800">Remove Watermark</button>
-              <span id="uploadInfo" class="text-xs text-gray-500 self-center">File ≤30MB & duration ≤10s</span>
-            </div>
-          </div>
+          <video id="uploadPreview" class="hidden w-full max-h-72 bg-black rounded-xl" controls muted playsinline></video>
         </div>
-
-        <!-- Paste URL block (hidden by default) -->
-        <div id="pasteUrlBlock" class="mt-4 hidden">
-          <div class="rounded-2xl border border-gray-200 p-4">
-            <h3 class="text-sm font-medium text-gray-700 mb-2">Paste a Sora video URL</h3>
-            <div class="flex gap-2">
-              <input id="uploadUrlInput" type="url" placeholder="https://example.com/sora-video.mp4" class="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-black" />
-              <button id="btnClearUploadUrl" class="px-4 py-3 rounded-xl border border-gray-200 hover:bg-gray-100">Clear</button>
-              <button id="btnSubmitUrlUpload" class="px-4 py-3 rounded-xl bg-black text-white hover:bg-gray-800">Remove Watermark</button>
-            </div>
-            <p class="mt-2 text-xs text-gray-500">We process the video via Replicate API. Converted files are temporary.</p>
+        <div class="mt-4 flex items-center gap-3">
+          <button id="btnSubmitUpload" class="px-5 py-2 rounded-xl bg-black text-white hover:bg-gray-800">Remove watermark</button>
+          <button id="btnClearFile" class="px-4 py-2 rounded-xl border border-gray-200 hover:bg-gray-100">Clear</button>
+          <span id="uploadInfo" class="text-xs text-gray-500">File ≤30MB & duration ≤10s</span>
+        </div>
+        <!-- Progress -->
+        <div class="mt-4">
+          <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+            <div id="progressBar" class="h-2 bg-black rounded-full" style="width:0%"></div>
+          </div>
+          <div class="mt-2 text-xs text-gray-600">
+            <span id="progressText">Progress: 0%</span>
           </div>
         </div>
       </div>
-    </section>
 
-    <!-- Result -->
-    <section id="resultSection" class="mt-10 hidden">
-      <div class="glass rounded-3xl p-6 shadow-sm">
-        <h2 class="text-xl font-semibold">Result</h2>
-        <div class="mt-4 grid md:grid-cols-2 gap-4">
-          <div>
-            <h3 class="text-sm font-medium text-gray-600">Before</h3>
-            <video id="beforeVideo" class="w-full h-64 bg-black rounded-xl" controls></video>
+      <!-- Result Card -->
+      <div class="rounded-2xl border border-gray-200 p-6">
+        <h2 class="text-base font-semibold">Result</h2>
+        <div class="mt-4 rounded-xl border-2 border-dashed border-gray-300 p-6 text-center">
+          <video id="afterVideo" class="w-full max-h-72 bg-black rounded-xl hidden" controls playsinline></video>
+          <div id="resultEmpty" class="flex flex-col items-center">
+            <div class="h-12 w-12 border-2 border-gray-400 rounded-lg flex items-center justify-center">
+              <span class="text-2xl text-gray-600">📺</span>
+            </div>
+            <p class="mt-3 text-sm text-gray-700">Upload a video to start</p>
           </div>
-          <div>
-            <h3 class="text-sm font-medium text-gray-600">After</h3>
-            <video id="afterVideo" class="w-full h-64 bg-black rounded-xl" controls></video>
-          </div>
+        </div>
+        <div class="mt-4 flex items-center gap-3">
+          <a id="btnDownload" href="#" download="cleaned.mp4" class="px-5 py-2 rounded-xl bg-black text-white hover:bg-gray-800 pointer-events-none opacity-50">Download</a>
+          <span id="apiHealthOut" class="text-xs text-gray-600">Backend: auto-detected</span>
         </div>
         <div id="logsBox" class="mt-4 text-xs text-gray-500 whitespace-pre-wrap"></div>
       </div>
     </section>
 
-    <!-- Features (from open-source project intro) -->
+    <!-- Features -->
     <section id="features" class="mt-12">
-      <div class="glass rounded-3xl p-6 shadow-sm">
-        <h2 class="text-xl font-semibold">Why this watermark remover</h2>
+      <div class="rounded-2xl border border-gray-200 p-6">
+        <h2 class="text-base font-semibold">Why this watermark remover</h2>
         <ul class="mt-3 list-disc pl-6 text-gray-700">
           <li>Purpose-built for Sora short-video watermark patterns</li>
-          <li>Fast processing via cloud inference, minimal waiting</li>
+          <li>Fast processing via cloud inference</li>
           <li>Preserves visual quality while removing overlays</li>
-          <li>Simple workflow: paste URL or upload, one click to clean</li>
-          <li>Temporary storage; we do not retain your converted videos</li>
-        </ul>
-      </div>
-    </section>
-
-    <!-- Tech advantages -->
-    <section id="tech" class="mt-12">
-      <div class="glass rounded-3xl p-6 shadow-sm">
-        <h2 class="text-xl font-semibold">Technical advantages</h2>
-        <ul class="mt-3 list-disc pl-6 text-gray-700">
-          <li>Leverages the open-source SoraWatermarkCleaner pipeline</li>
-          <li>Optimized inference through Replicate API for reliability and scale</li>
-          <li>Frame-wise processing tailored to watermark regions</li>
-          <li>Client-side constraints to ensure fast turnaround</li>
-          <li>Stateless backend; uploads proxied and discarded post-processing</li>
+          <li>Simple workflow: upload and one click to clean</li>
+          <li>Temporary processing; we do not retain your converted videos</li>
         </ul>
       </div>
     </section>
 
     <!-- Showcase -->
     <section id="showcase" class="mt-12">
-      <div class="glass rounded-3xl p-6 shadow-sm">
-        <h2 class="text-xl font-semibold">Before & After showcase</h2>
+      <div class="rounded-2xl border border-gray-200 p-6">
+        <h2 class="text-base font-semibold">Before & After showcase</h2>
         <p class="mt-2 text-sm text-gray-600">Compare original and cleaned output side-by-side.</p>
         <div class="mt-4 grid md:grid-cols-2 gap-4">
           <video class="w-full h-64 bg-black rounded-xl" controls></video>
@@ -185,14 +123,14 @@
       </div>
     </section>
 
-    <!-- Q&A -->
+    <!-- FAQ -->
     <section id="qa" class="mt-12">
-      <div class="glass rounded-3xl p-6 shadow-sm">
-        <h2 class="text-xl font-semibold">Q&A</h2>
+      <div class="rounded-2xl border border-gray-200 p-6">
+        <h2 class="text-base font-semibold">FAQ</h2>
         <div class="mt-3 space-y-3">
           <details class="rounded-xl border border-gray-200 p-4">
             <summary class="font-medium cursor-pointer">Do you store my video?</summary>
-            <p class="mt-2 text-sm text-gray-700">Converted videos are stored temporarily for processing. We do not retain them long-term.</p>
+            <p class="mt-2 text-sm text-gray-700">Converted videos are processed temporarily and not retained.</p>
           </details>
           <details class="rounded-xl border border-gray-200 p-4">
             <summary class="font-medium cursor-pointer">What formats are supported?</summary>
@@ -200,130 +138,88 @@
           </details>
           <details class="rounded-xl border border-gray-200 p-4">
             <summary class="font-medium cursor-pointer">How long does processing take?</summary>
-            <p class="mt-2 text-sm text-gray-700">Usually seconds to a minute, depending on queue and video length.</p>
-          </details>
-          <details class="rounded-xl border border-gray-200 p-4">
-            <summary class="font-medium cursor-pointer">Is it free?</summary>
-            <p class="mt-2 text-sm text-gray-700">Processing consumes API credits on Replicate. Pricing depends on your plan.</p>
+            <p class="mt-2 text-sm text-gray-700">Usually seconds to a few minutes depending on queue.</p>
           </details>
         </div>
+      </div>
+    </section>
+
+    <!-- User Agreement -->
+    <section id="agreement" class="mt-12">
+      <div class="rounded-2xl border border-gray-200 p-6">
+        <h2 class="text-base font-semibold">User Agreement</h2>
+        <ul class="mt-2 list-disc pl-6 text-gray-700 text-sm">
+          <li>You must own or have permission to process the video content.</li>
+          <li>Do not use this tool to infringe on creators’ rights.</li>
+          <li>Outputs are for personal use and evaluation; commercial use may require rights from the content owner.</li>
+          <li>We may rate limit or refuse abusive usage.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Privacy Policy -->
+    <section id="privacy" class="mt-12">
+      <div class="rounded-2xl border border-gray-200 p-6">
+        <h2 class="text-base font-semibold">Privacy Policy</h2>
+        <ul class="mt-2 list-disc pl-6 text-gray-700 text-sm">
+          <li>Uploaded files are processed temporarily and not retained.</li>
+          <li>No personal data is collected beyond technical logs required to operate the service.</li>
+          <li>Third-party inference providers may process the video for the sole purpose of watermark removal.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Content Copyright -->
+    <section id="copyright" class="mt-12">
+      <div class="rounded-2xl border border-gray-200 p-6">
+        <h2 class="text-base font-semibold">Content Copyright</h2>
+        <p class="mt-2 text-sm text-gray-700">All content remains the property of their respective owners. This site is not affiliated with Sora or any of its authors.</p>
       </div>
     </section>
 
     <!-- Footer -->
     <footer class="mt-12 mb-10">
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-sm text-gray-600">
-        <div>© 2025 Sora Watermark Cleaner</div>
+        <div>© 2025 Remove Sora Watermark</div>
         <div class="flex gap-6">
-          <a href="#" class="hover:text-gray-900">User Agreement</a>
-          <a href="#" class="hover:text-gray-900">Privacy Policy</a>
-          <a href="#" class="hover:text-gray-900">Content Copyright</a>
+          <a href="#agreement" class="hover:text-black">User Agreement</a>
+          <a href="#privacy" class="hover:text-black">Privacy Policy</a>
+          <a href="#copyright" class="hover:text-black">Content Copyright</a>
         </div>
       </div>
+      <p class="mt-4 text-xs text-gray-500">Disclaimer: This tool is for educational and research purposes only. Ensure you have rights to process the video. We do not claim ownership of any content and are not affiliated with Sora or its authors.</p>
     </footer>
   </main>
 
   <script>
-    const $ = (id) => document.getElementById(id);
+    // API base
     const API_BASE = (document.querySelector('meta[name="api-base"]')?.content || '').trim();
     const apiUrl = (path) => (API_BASE ? API_BASE.replace(/\/$/, '') + path : path);
-    // Display current backend base to help deployment testing
-    const apiBaseDisplay = API_BASE || "(relative)";
-    (() => {
-      if (API_BASE && API_BASE.includes("dashboard.render.com")) {
-        console.warn("API_BASE points to Render dashboard, not your service URL. Use your onrender.com service URL instead, e.g. https://your-service.onrender.com");
-      }
-      const hint = document.getElementById("urlHint");
-      if (hint) {
-        hint.textContent = `We process via Replicate API through backend: ${apiBaseDisplay}. Converted files are temporary.`;
-      }
-    })();
-    const urlInput = $("urlInput");
-    const btnClearUrl = $("btnClearUrl");
-    const btnSubmitUrl = $("btnSubmitUrl");
-    const btnPickFile = $("btnPickFile");
+
+    const $ = (id) => document.getElementById(id);
+    const dropZone = $("dropZone");
     const fileInput = $("fileInput");
     const uploadPreview = $("uploadPreview");
+    const uploadEmpty = $("uploadEmpty");
     const btnSubmitUpload = $("btnSubmitUpload");
-    // Upload module tabs & URL mode
-    const tabUpload = document.getElementById("tabUpload");
-    const tabPasteUrl = document.getElementById("tabPasteUrl");
-    const uploadBlock = document.getElementById("uploadBlock");
-    const pasteUrlBlock = document.getElementById("pasteUrlBlock");
-    const uploadUrlInput = document.getElementById("uploadUrlInput");
-    const btnClearUploadUrl = document.getElementById("btnClearUploadUrl");
-    const btnSubmitUrlUpload = document.getElementById("btnSubmitUrlUpload");
-    const resultSection = $("resultSection");
-    const beforeVideo = $("beforeVideo");
+    const btnClearFile = $("btnClearFile");
+    const progressBar = $("progressBar");
+    const progressText = $("progressText");
     const afterVideo = $("afterVideo");
+    const resultEmpty = $("resultEmpty");
+    const btnDownload = $("btnDownload");
     const logsBox = $("logsBox");
-    const btnScrollUrl = $("btnScrollUrl");
-    const btnScrollUpload = $("btnScrollUpload");
+    const apiHealthOut = $("apiHealthOut");
 
-    btnScrollUrl.addEventListener("click", () => {
-      document.getElementById("urlSection").scrollIntoView({ behavior: "smooth", block: "start" });
-      urlInput.focus();
-    });
-    btnScrollUpload.addEventListener("click", () => {
-      document.getElementById("uploadSection").scrollIntoView({ behavior: "smooth", block: "start" });
-    });
+    // Show backend base
+    apiHealthOut.textContent = "Backend: " + (API_BASE || "(relative)");
+    if (API_BASE.includes("dashboard.render.com")) {
+      console.warn("API_BASE points to Render dashboard; use your onrender.com service URL.");
+    }
 
-    btnClearUrl.addEventListener("click", () => {
-      urlInput.value = "";
-      urlInput.focus();
-    });
-
-    btnSubmitUrl.addEventListener("click", async () => {
-      const url = urlInput.value.trim();
-      if (!url) {
-        alert("Please paste a valid video URL.");
-        return;
-      }
-      setLoading(true);
-      try {
-        const resp = await fetch(apiUrl("/api/remove"), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url })
-        });
-        const data = await resp.json();
-        if (!resp.ok) throw new Error(data.error || "Request failed");
-        showResult(url, data);
-      } catch (e) {
-        alert(e.message || "Error");
-      } finally {
-        setLoading(false);
-      }
-    });
-
-    btnPickFile.addEventListener("click", () => fileInput.click());
-
-    // Toggle tabs in upload section
-    tabUpload.addEventListener("click", () => {
-      tabUpload.className = "px-4 py-2 rounded-xl bg-black text-white hover:bg-gray-800";
-      tabPasteUrl.className = "px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-900 hover:bg-gray-100";
-      uploadBlock.classList.remove("hidden");
-      pasteUrlBlock.classList.add("hidden");
-    });
-    tabPasteUrl.addEventListener("click", () => {
-      tabPasteUrl.className = "px-4 py-2 rounded-xl bg-black text-white hover:bg-gray-800";
-      tabUpload.className = "px-4 py-2 rounded-xl bg-white border border-gray-200 text-gray-900 hover:bg-gray-100";
-      uploadBlock.classList.add("hidden");
-      pasteUrlBlock.classList.remove("hidden");
-      uploadUrlInput.focus();
-    });
-
-    btnClearUploadUrl.addEventListener("click", () => {
-      uploadUrlInput.value = "";
-      uploadUrlInput.focus();
-    });
-
-    // drag & drop
-    const dropZone = btnPickFile.closest("div.border");
-    dropZone.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      dropZone.classList.add("bg-gray-50");
-    });
+    // Drag & drop
+    dropZone.addEventListener("click", () => fileInput.click());
+    dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("bg-gray-50"); });
     dropZone.addEventListener("dragleave", () => dropZone.classList.remove("bg-gray-50"));
     dropZone.addEventListener("drop", (e) => {
       e.preventDefault();
@@ -338,23 +234,63 @@
     });
 
     function handleFileSelected(file) {
-      // size check
       const maxSize = 30 * 1024 * 1024;
       if (file.size > maxSize) {
-        alert("File too large. Please keep under 30MB.");
+        alert("File too large. Keep under 30MB.");
         fileInput.value = "";
         return;
       }
-      // preview and duration check
       const url = URL.createObjectURL(file);
+      uploadEmpty.classList.add("hidden");
+      uploadPreview.classList.remove("hidden");
       uploadPreview.src = url;
       uploadPreview.onloadedmetadata = () => {
         if (uploadPreview.duration && uploadPreview.duration > 10.5) {
-          alert("Video too long. Please keep under 10 seconds.");
+          alert("Video too long. Keep under 10 seconds.");
           fileInput.value = "";
           uploadPreview.src = "";
+          uploadPreview.classList.add("hidden");
+          uploadEmpty.classList.remove("hidden");
         }
       };
+    }
+
+    btnClearFile.addEventListener("click", () => {
+      fileInput.value = "";
+      uploadPreview.src = "";
+      uploadPreview.classList.add("hidden");
+      uploadEmpty.classList.remove("hidden");
+      resetResult();
+      resetProgress();
+    });
+
+    // Progress simulation: increments to 90% while waiting, 100% on finish
+    let progressTimer = null;
+    function startProgress() {
+      resetProgress();
+      let p = 1;
+      progressBar.style.width = p + "%";
+      progressText.textContent = "Progress: " + p + "%";
+      progressTimer = setInterval(() => {
+        p = Math.min(90, p + 2);
+        progressBar.style.width = p + "%";
+        progressText.textContent = "Progress: " + p + "%";
+      }, 600);
+    }
+    function finishProgress() {
+      if (progressTimer) clearInterval(progressTimer);
+      progressBar.style.width = "100%";
+      progressText.textContent = "Progress: 100%";
+    }
+    function resetProgress() {
+      if (progressTimer) clearInterval(progressTimer);
+      progressBar.style.width = "0%";
+      progressText.textContent = "Progress: 0%";
+    }
+
+    function setLoading(loading) {
+      btnSubmitUpload.disabled = loading;
+      btnSubmitUpload.textContent = loading ? "Processing..." : "Remove watermark";
     }
 
     btnSubmitUpload.addEventListener("click", async () => {
@@ -364,122 +300,49 @@
         return;
       }
       setLoading(true);
+      startProgress();
       try {
         const form = new FormData();
         form.append("file", file, file.name);
         const resp = await fetch(apiUrl("/api/remove"), { method: "POST", body: form });
         const data = await resp.json();
         if (!resp.ok) throw new Error(data.error || "Request failed");
-        const fileUrl = uploadPreview.src; // local blob URL for 'before'
-        showResult(fileUrl, data);
+
+        const output = data.output;
+        let afterUrl = null;
+        if (Array.isArray(output)) afterUrl = output[output.length - 1];
+        else if (typeof output === "string") afterUrl = output;
+        else if (output && output.video) afterUrl = output.video;
+
+        if (!afterUrl) throw new Error("No output URL returned.");
+        showResult(afterUrl);
+        logsBox.textContent = data.logs || "";
+        finishProgress();
       } catch (e) {
         alert(e.message || "Error");
+        logsBox.textContent = (e && e.message) ? e.message : String(e);
+        resetProgress();
       } finally {
         setLoading(false);
       }
     });
 
-    // Submit for URL mode inside upload section
-    btnSubmitUrlUpload.addEventListener("click", async () => {
-      const url = uploadUrlInput.value.trim();
-      if (!url) {
-        alert("Please paste a valid video URL.");
-        return;
-      }
-      setLoading(true);
-      try {
-        const resp = await fetch(apiUrl("/api/remove"), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url })
-        });
-        const data = await resp.json();
-        if (!resp.ok) throw new Error(data.error || "Request failed");
-        showResult(url, data);
-      } catch (e) {
-        alert(e.message || "Error");
-      } finally {
-        setLoading(false);
-      }
-    });
-
-    function showResult(beforeUrl, data) {
-      resultSection.classList.remove("hidden");
-      beforeVideo.src = beforeUrl;
-      const output = data.output;
-      // model output can be a single URL or array of URLs
-      let afterUrl = null;
-      if (Array.isArray(output)) {
-        afterUrl = output[output.length - 1];
-      } else if (typeof output === "string") {
-        afterUrl = output;
-      } else if (output && output.video) {
-        afterUrl = output.video;
-      }
-      afterVideo.src = afterUrl || "";
-      logsBox.textContent = data.logs || "";
-      afterVideo.scrollIntoView({ behavior: "smooth", block: "center" });
+    function showResult(url) {
+      resultEmpty.classList.add("hidden");
+      afterVideo.classList.remove("hidden");
+      afterVideo.src = url;
+      btnDownload.classList.remove("pointer-events-none", "opacity-50");
+      btnDownload.href = url;
     }
 
-    function setLoading(loading) {
-      btnSubmitUrl.disabled = loading;
-      btnSubmitUpload.disabled = loading;
-      if (typeof btnSubmitUrlUpload !== "undefined" && btnSubmitUrlUpload) {
-        btnSubmitUrlUpload.disabled = loading;
-      }
-
-      const label = loading ? "Processing..." : "Remove Watermark";
-      btnSubmitUrl.textContent = label;
-      btnSubmitUpload.textContent = label;
-      if (typeof btnSubmitUrlUpload !== "undefined" && btnSubmitUrlUpload) {
-        btnSubmitUrlUpload.textContent = label;
-      }
+    function resetResult() {
+      afterVideo.src = "";
+      afterVideo.classList.add("hidden");
+      resultEmpty.classList.remove("hidden");
+      btnDownload.classList.add("pointer-events-none", "opacity-50");
+      btnDownload.href = "#";
+      logsBox.textContent = "";
     }
-  </script>
-  <script>
-    // Lightweight API health checker to diagnose Render connectivity
-    (function () {
-      const API_BASE = (document.querySelector('meta[name="api-base"]')?.content || '').trim();
-      const apiUrl = (path) => (API_BASE ? API_BASE.replace(/\/$/, '') + path : path);
-      const btn = document.getElementById("apiHealthBtn");
-      const out = document.getElementById("apiHealthOut");
-      if (!btn || !out) return;
-
-      const show = (text, ok) => {
-        out.textContent = text;
-        out.className = ok ? "text-green-600" : "text-red-600";
-      };
-
-      const check = async () => {
-        const ctrl = new AbortController();
-        const t = setTimeout(() => ctrl.abort(), 15000);
-        out.className = "text-gray-600";
-        out.textContent = `Checking ${API_BASE || "(relative)"}...`;
-        try {
-          const resp = await fetch(apiUrl("/api/health"), { signal: ctrl.signal });
-          const status = resp.status;
-          const type = resp.headers.get("content-type") || "";
-          let bodyText = "";
-          try { bodyText = await resp.text(); } catch {}
-          clearTimeout(t);
-          if (status === 200 && type.includes("application/json")) {
-            show(`OK 200 JSON: ${bodyText}`, true);
-          } else {
-            show(`HTTP ${status} ${type || ""} ${bodyText.slice(0, 120)}`, false);
-          }
-        } catch (e) {
-          clearTimeout(t);
-          show(`Network error: ${e?.message || e}`, false);
-        }
-      };
-
-      // init line shows current backend
-      out.textContent = `Backend: ${API_BASE || "(relative to same origin)"}`;
-      if (API_BASE.includes("dashboard.render.com")) {
-        console.warn("API_BASE points to Render dashboard, not your service URL. Use your onrender.com service URL instead.");
-      }
-      btn.addEventListener("click", check);
-    })();
   </script>
 </body>
 </html>
