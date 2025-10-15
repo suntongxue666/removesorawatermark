@@ -1,7 +1,6 @@
 import express from "express";
 import multer from "multer";
 import fetch from "node-fetch";
-import FormData from "form-data";
 
 const app = express();
 
@@ -24,16 +23,31 @@ const upload = multer({
   }
 });
 
-// Environment variables
+ // Environment variables
 const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN;
 const REPLICATE_MODEL_VERSION = process.env.REPLICATE_MODEL_VERSION;
 // You must set both before running in production
+
+// Parse model/version from combined env like "uglyrobot/sora2-watermark-remover:VERSION_HASH"
+function parseReplicateModelVersion(val) {
+  if (!val) return { model: null, version: null };
+  const hasColon = val.includes(":");
+  if (hasColon) {
+    const [model, version] = val.split(":");
+    return { model: model || null, version: version || null };
+  }
+  // if only version hash was provided
+  return { model: null, version: val };
+}
+const { model: REPLICATE_MODEL_SLUG, version: REPLICATE_VERSION_ID } = parseReplicateModelVersion(REPLICATE_MODEL_VERSION);
 
 if (!REPLICATE_API_TOKEN) {
   console.warn("Warning: REPLICATE_API_TOKEN is not set. Please set it before calling /api/remove.");
 }
 if (!REPLICATE_MODEL_VERSION) {
   console.warn("Warning: REPLICATE_MODEL_VERSION is not set. Please set it to the specific version ID from Replicate.");
+} else {
+  console.log("Replicate config -> model:", REPLICATE_MODEL_SLUG || "(none)","version:", REPLICATE_VERSION_ID || "(none)");
 }
 
 // Health check
@@ -47,41 +61,98 @@ app.get("/api/health", (req, res) => {
 
 // Upload buffer to Replicate uploads to get a temporary URL (Node-friendly)
 async function uploadToReplicate(fileBuffer, filename) {
-  const formData = new FormData();
-  formData.append("file", fileBuffer, {
-    filename: filename || "upload.mov",
-    contentType: "application/octet-stream"
-  });
+  // Infer a basic content type from extension; fallback to mp4
+  const lower = (filename || "").toLowerCase();
+  const contentType =
+    lower.endsWith(".mov") ? "video/quicktime" :
+    lower.endsWith(".mp4") ? "video/mp4" :
+    "video/mp4";
 
-  const resp = await fetch("https://api.replicate.com/v1/uploads", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${REPLICATE_API_TOKEN}`
-    },
-    body: formData
-  });
+  // Try Replicate Files API (preferred)
+  try {
+    const initResp = await fetch("https://api.replicate.com/v1/files", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${REPLICATE_API_TOKEN}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        name: filename || "upload.mp4",
+        content_type: contentType
+      })
+    });
 
-  if (!resp.ok) {
-    const text = await resp.text();
-    throw new Error(`Replicate upload failed: ${resp.status} ${text}`);
+    if (!initResp.ok) {
+      const text = await initResp.text();
+      throw new Error(`Replicate upload init failed: ${initResp.status} ${text}`);
+    }
+
+    const initData = await initResp.json();
+    const uploadUrl = initData.upload_url;
+    const serveUrl = initData.serve_url || initData.serving_url || initData.url;
+
+    if (!uploadUrl || !serveUrl) {
+      throw new Error(`Replicate upload init missing URLs: ${JSON.stringify(initData)}`);
+    }
+
+    const putResp = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": contentType,
+        "Content-Length": String(fileBuffer.length)
+      },
+      body: fileBuffer
+    });
+
+    if (!putResp.ok) {
+      const text = await putResp.text().catch(() => "");
+      throw new Error(`Replicate upload PUT failed: ${putResp.status} ${text}`);
+    }
+
+    return serveUrl;
+  } catch (err) {
+    console.error("Replicate files upload failed, falling back to transfer.sh:", err?.message || err);
+    // Fallback: upload to transfer.sh to get a temporary public URL
+    const safeName = (filename || "upload.mp4").replace(/\s+/g, "_");
+    const tsUrl = `https://transfer.sh/${safeName}`;
+    const tsResp = await fetch(tsUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": contentType,
+        "Content-Length": String(fileBuffer.length)
+      },
+      body: fileBuffer
+    });
+    if (!tsResp.ok) {
+      const text = await tsResp.text().catch(() => "");
+      throw new Error(`Fallback upload failed: ${tsResp.status} ${text}`);
+    }
+    const publicUrl = (await tsResp.text()).trim();
+    return publicUrl;
   }
-
-  const data = await resp.json();
-  // data.url is a temporary public URL that can be used as model input
-  return data.url;
 }
 
 // Start a prediction and poll until completed
 async function runPredictionWithUrl(videoUrl) {
+  // When using model-version endpoint, body should only include input
+  // To maximize compatibility across versions, include multiple commonly used keys.
   const body = {
-    version: REPLICATE_MODEL_VERSION,
     input: {
-      // For uglyrobot/sora2-watermark-remover, input is "video_url"
-      video_url: videoUrl
+      video: videoUrl,
+      video_url: videoUrl,
+      input_video: videoUrl
     }
   };
 
-  const startResp = await fetch("https://api.replicate.com/v1/predictions", {
+  // Prefer model-version endpoint to avoid ambiguity with generic /predictions
+  const endpoint =
+    REPLICATE_MODEL_SLUG && (REPLICATE_VERSION_ID || REPLICATE_MODEL_VERSION)
+      ? `https://api.replicate.com/v1/models/${REPLICATE_MODEL_SLUG}/versions/${REPLICATE_VERSION_ID || REPLICATE_MODEL_VERSION}/predictions`
+      : "https://api.replicate.com/v1/predictions";
+
+  console.log("Starting Replicate prediction -> endpoint:", endpoint, "input keys:", Object.keys(body.input));
+
+  const startResp = await fetch(endpoint, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${REPLICATE_API_TOKEN}`,
