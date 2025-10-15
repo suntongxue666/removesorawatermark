@@ -2,10 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Sora Watermark Cleaner</title>
+  <title>Remove Sora Watermark - Sora Watermark Remover_Free,Fast,Quality</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="https://cdn.tailwindcss.com"></script>
-  <meta name="description" content="Remove Sora short-video watermark online. Upload a short video (≤10s, ≤30MB). Fast, clean, privacy-friendly.">
+  <meta name="description" content="Remove sora watermark is a tool of Sora watermark remover with AI-Power, Free, Quickly and High-Quality. Help you remove sora videos watermark easily.">
+  <meta name="keywords" content="remove sora watermark,sora watermark remover,sora watermark,remove sora watermark,ai watermark remover,video watermark removal,sora video watermark,free watermark remover,watermark removal,sora video tool,remove video watermark,ai video watermark remover">
   <meta name="api-base" content="https://removesorawatermark.onrender.com">
   <link rel="icon" href="data:,">
   <style>
@@ -26,7 +27,7 @@
   <header class="w-full">
     <div class="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
       <div class="flex items-center gap-3">
-        <div class="h-6 w-6 rounded-md bg-black"></div>
+        <img src="https://res.cloudinary.com/dygx9d3gi/image/upload/v1760557876/removesora-icon120_lfwtxk.png" alt="Logo" class="h-6 w-6 rounded-md">
         <span class="font-semibold text-base">Removesorawatermark</span>
       </div>
       <nav class="text-sm text-gray-600">
@@ -100,7 +101,6 @@
         <div class="mt-4 flex items-center gap-3">
           <a id="btnDownload" href="#" download="cleaned.mp4" class="px-5 py-2 rounded-xl bg-black text-white hover:bg-gray-800 pointer-events-none opacity-50">Download</a>
           <button id="btnToggleLogs" class="px-4 py-2 rounded-xl border border-gray-200 hover:bg-gray-100">Show details</button>
-          <span id="apiHealthOut" class="text-xs text-gray-600">Backend: auto-detected</span>
         </div>
         <div id="logsBox" class="mt-2 text-xs text-gray-500 whitespace-pre-wrap max-h-36 overflow-y-auto hidden"></div>
       </div>
@@ -153,30 +153,7 @@
       </div>
     </section>
 
-    <!-- User Agreement -->
-    <section id="agreement" class="mt-12">
-      <div class="rounded-2xl border border-gray-200 p-6">
-        <h2 class="text-base font-semibold">User Agreement</h2>
-        <ul class="mt-2 list-disc pl-6 text-gray-700 text-sm">
-          <li>You must own or have permission to process the video content.</li>
-          <li>Do not use this tool to infringe on creators’ rights.</li>
-          <li>Outputs are for personal use and evaluation; commercial use may require rights from the content owner.</li>
-          <li>We may rate limit or refuse abusive usage.</li>
-        </ul>
-      </div>
-    </section>
 
-    <!-- Privacy Policy -->
-    <section id="privacy" class="mt-12">
-      <div class="rounded-2xl border border-gray-200 p-6">
-        <h2 class="text-base font-semibold">Privacy Policy</h2>
-        <ul class="mt-2 list-disc pl-6 text-gray-700 text-sm">
-          <li>Uploaded files are processed temporarily and not retained.</li>
-          <li>No personal data is collected beyond technical logs required to operate the service.</li>
-          <li>Third-party inference providers may process the video for the sole purpose of watermark removal.</li>
-        </ul>
-      </div>
-    </section>
 
     <!-- Content Copyright -->
     <section id="copyright" class="mt-12">
@@ -191,8 +168,8 @@
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-sm text-gray-600">
         <div>© 2025 Remove Sora Watermark</div>
         <div class="flex gap-6">
-          <a href="#agreement" class="hover:text-black">User Agreement</a>
-          <a href="#privacy" class="hover:text-black">Privacy Policy</a>
+          <a href="agreement.html" class="hover:text-black">User Agreement</a>
+          <a href="privacy.html" class="hover:text-black">Privacy Policy</a>
           <a href="#copyright" class="hover:text-black">Content Copyright</a>
         </div>
       </div>
@@ -218,14 +195,8 @@
     const resultEmpty = $("resultEmpty");
     const btnDownload = $("btnDownload");
     const logsBox = $("logsBox");
-    const apiHealthOut = $("apiHealthOut");
     const btnToggleLogs = $("btnToggleLogs");
 
-    // Show backend base
-    apiHealthOut.textContent = "Backend: " + (API_BASE || "(relative)");
-    if (API_BASE.includes("dashboard.render.com")) {
-      console.warn("API_BASE points to Render dashboard; use your onrender.com service URL.");
-    }
 
     // Drag & drop
     dropZone.addEventListener("click", () => fileInput.click());
