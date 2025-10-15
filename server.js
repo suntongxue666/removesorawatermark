@@ -264,9 +264,9 @@ async function runPredictionWithUrl(videoUrl) {
   let lastData = startData;
 
   const startedAt = Date.now();
-  const timeoutMs = 2 * 60 * 1000; // 2 minutes safety timeout
+  const timeoutMs = 10 * 60 * 1000; // 10 minutes safety timeout
 
-  while (["starting", "processing"].includes(status)) {
+  while (["queued", "starting", "processing"].includes(status)) {
     if (Date.now() - startedAt > timeoutMs) {
       throw new Error("Prediction timed out.");
     }
