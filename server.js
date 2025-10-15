@@ -61,14 +61,48 @@ app.get("/api/health", (req, res) => {
 
 // Upload buffer to Replicate uploads to get a temporary URL (Node-friendly)
 async function uploadToReplicate(fileBuffer, filename) {
-  // Infer a basic content type from extension; fallback to mp4
+  // 推断 content-type，默认 mp4
   const lower = (filename || "").toLowerCase();
   const contentType =
     lower.endsWith(".mov") ? "video/quicktime" :
     lower.endsWith(".mp4") ? "video/mp4" :
     "video/mp4";
 
-  // Try Replicate Files API (preferred)
+  // 1) 优先：multipart 直传 /v1/files（Replicate 新推荐）
+  try {
+    const fd = new FormData();
+    const blob = new Blob([fileBuffer], { type: contentType });
+    fd.append("file", blob, filename || "upload.mp4");
+
+    const resp = await fetch("https://api.replicate.com/v1/files", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${REPLICATE_API_TOKEN}`
+        // 不要手动设置 Content-Type，fetch 会自动加 boundary
+      },
+      body: fd
+    });
+
+    if (!resp.ok) {
+      const text = await resp.text();
+      throw new Error(`Replicate multipart upload failed: ${resp.status} ${text}`);
+    }
+
+    const data = await resp.json();
+    const serveUrl =
+      data.serve_url || data.serving_url || data.url || data.download_url || data.file?.url;
+
+    if (serveUrl) {
+      console.log("Replicate multipart upload ok ->", serveUrl);
+      return serveUrl;
+    }
+    // 如果没有可用直链，继续尝试第二策略
+    console.warn("Replicate multipart upload returned no serve URL, falling back...", data);
+  } catch (e) {
+    console.error("Replicate multipart upload error:", e?.message || e);
+  }
+
+  // 2) 次选：创建上传槽 + PUT 原始字节（某些账户策略下可用）
   try {
     const initResp = await fetch("https://api.replicate.com/v1/files", {
       method: "POST",
@@ -109,10 +143,42 @@ async function uploadToReplicate(fileBuffer, filename) {
       throw new Error(`Replicate upload PUT failed: ${putResp.status} ${text}`);
     }
 
+    console.log("Replicate signed PUT upload ok ->", serveUrl);
     return serveUrl;
   } catch (err) {
-    console.error("Replicate files upload failed, falling back to transfer.sh:", err?.message || err);
-    // Fallback: upload to transfer.sh to get a temporary public URL
+    console.error("Replicate signed PUT upload error:", err?.message || err);
+  }
+
+  // 3) 回退：tmpfiles.org（稳定性比 transfer.sh 更高）
+  try {
+    const fd2 = new FormData();
+    const blob2 = new Blob([fileBuffer], { type: contentType });
+    fd2.append("file", blob2, filename || "upload.mp4");
+    const r2 = await fetch("https://tmpfiles.org/api/v1/upload", {
+      method: "POST",
+      body: fd2
+    });
+    if (!r2.ok) {
+      const text = await r2.text().catch(() => "");
+      throw new Error(`tmpfiles upload failed: ${r2.status} ${text}`);
+    }
+    const j = await r2.json().catch(() => ({}));
+    let url = j?.data?.url || j?.url;
+    // tmpfiles 下载直链需要 /dl/
+    if (url && url.startsWith("https://tmpfiles.org/")) {
+      url = url.replace("https://tmpfiles.org/", "https://tmpfiles.org/dl/");
+    }
+    if (url) {
+      console.log("tmpfiles upload ok ->", url);
+      return url;
+    }
+    console.warn("tmpfiles upload returned no url, falling back...");
+  } catch (e) {
+    console.error("tmpfiles upload error:", e?.message || e);
+  }
+
+  // 4) 最后回退：transfer.sh（若 Render 网络允许）
+  try {
     const safeName = (filename || "upload.mp4").replace(/\s+/g, "_");
     const tsUrl = `https://transfer.sh/${safeName}`;
     const tsResp = await fetch(tsUrl, {
@@ -125,11 +191,16 @@ async function uploadToReplicate(fileBuffer, filename) {
     });
     if (!tsResp.ok) {
       const text = await tsResp.text().catch(() => "");
-      throw new Error(`Fallback upload failed: ${tsResp.status} ${text}`);
+      throw new Error(`transfer.sh upload failed: ${tsResp.status} ${text}`);
     }
     const publicUrl = (await tsResp.text()).trim();
+    console.log("transfer.sh upload ok ->", publicUrl);
     return publicUrl;
+  } catch (e) {
+    console.error("transfer.sh upload error:", e?.message || e);
   }
+
+  throw new Error("All upload strategies failed (Replicate multipart, signed PUT, tmpfiles.org, transfer.sh).");
 }
 
 // Start a prediction and poll until completed
