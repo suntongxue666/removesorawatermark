@@ -154,8 +154,10 @@ async function uploadToReplicate(fileBuffer, filename) {
   // 3) 回退：tmpfiles.org（稳定性比 transfer.sh 更高）
   try {
     const fd2 = new FormData();
-    const blob2 = new Blob([fileBuffer], { type: contentType });
-    fd2.append("file", blob2, filename || "upload.mp4");
+    fd2.append("file", fileBuffer, {
+      filename: filename || "upload.mp4",
+      contentType
+    });
     const r2 = await fetch("https://tmpfiles.org/api/v1/upload", {
       method: "POST",
       body: fd2
@@ -167,30 +169,20 @@ async function uploadToReplicate(fileBuffer, filename) {
     const j = await r2.json().catch(() => ({}));
     let url = j?.data?.url || j?.url;
 
-    // 规范化 tmpfiles 链接：
-    // 1) 强制 https
-    // 2) 将页面 URL 格式 https://tmpfiles.org/<id> 规范为直链 https://tmpfiles.org/dl/<id>
-    // 3) 对 http 或包含其他路径（如 download5.mp4）的情况，尽量提取第一个路径段作为 id
+    // 规范化 tmpfiles 链接为直链
     if (url) {
       try {
         // 强制 https
         url = url.replace(/^http:\/\//, "https://");
-
-        // 如果是 https://tmpfiles.org/<id>[...]
+        // https://tmpfiles.org/<id> -> https://tmpfiles.org/dl/<id>
         const m = url.match(/^https:\/\/tmpfiles\.org\/([^\/\?\#]+)/);
         if (m) {
           const id = m[1];
           url = `https://tmpfiles.org/dl/${id}`;
-        } else if (/https:\/\/tmpfiles\.org\/dl\//.test(url)) {
-          // 已经是直链，保持
-        } else if (/tmpfiles\.org/.test(url)) {
-          // 回退：若包含 tmpfiles 域但格式异常，尝试保留为 https
-          // 不再额外处理，让模型去取；日志中能看到最终 URL
         }
       } catch (e) {
         console.warn("tmpfiles url normalize error:", e?.message || e);
       }
-
       console.log("tmpfiles upload ok ->", url);
       return url;
     }
@@ -201,7 +193,8 @@ async function uploadToReplicate(fileBuffer, filename) {
 
   // 4) 最后回退：transfer.sh（若 Render 网络允许）
   try {
-    const safeName = (filename || "upload.mp4").replace(/\s+/g, "_");
+    const rawName = (filename || "upload.mp4").toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9._-]/g, "-");
+    const safeName = encodeURIComponent(rawName);
     const tsUrl = `https://transfer.sh/${safeName}`;
     const tsResp = await fetch(tsUrl, {
       method: "PUT",
@@ -215,7 +208,7 @@ async function uploadToReplicate(fileBuffer, filename) {
       const text = await tsResp.text().catch(() => "");
       throw new Error(`transfer.sh upload failed: ${tsResp.status} ${text}`);
     }
-    const publicUrl = (await tsResp.text()).trim();
+    const publicUrl = (await tsResp.text()).trim().replace(/^http:\/\//, "https://");
     console.log("transfer.sh upload ok ->", publicUrl);
     return publicUrl;
   } catch (e) {
