@@ -50,7 +50,7 @@
       <!-- Upload Card -->
       <div class="rounded-2xl border border-gray-200 p-6">
         <h2 class="text-base font-semibold">Upload Video</h2>
-        <div id="dropZone" class="mt-4 rounded-xl border-2 border-dashed border-gray-300 p-6 text-center cursor-pointer">
+        <div id="dropZone" class="mt-4 rounded-xl border-2 border-dashed border-gray-300 p-6 text-center cursor-pointer h-72">
           <input id="fileInput" type="file" accept="video/mp4,video/quicktime,video/*" class="hidden" />
           <div id="uploadEmpty" class="flex flex-col items-center">
             <div class="h-12 w-12 border-2 border-gray-400 rounded-lg flex items-center justify-center">
@@ -80,8 +80,8 @@
       <!-- Result Card -->
       <div class="rounded-2xl border border-gray-200 p-6">
         <h2 class="text-base font-semibold">Result</h2>
-        <div class="mt-4 rounded-xl border-2 border-dashed border-gray-300 p-6 text-center">
-          <video id="afterVideo" class="w-full max-h-72 bg-black rounded-xl hidden" controls playsinline></video>
+        <div class="mt-4 rounded-xl border-2 border-dashed border-gray-300 p-6 text-center h-72 relative">
+          <video id="afterVideo" class="w-full h-full bg-black rounded-xl hidden object-contain" controls playsinline></video>
           <div id="resultEmpty" class="flex flex-col items-center">
             <div class="h-12 w-12 border-2 border-gray-400 rounded-lg flex items-center justify-center">
               <span class="text-2xl text-gray-600">📺</span>
@@ -91,9 +91,10 @@
         </div>
         <div class="mt-4 flex items-center gap-3">
           <a id="btnDownload" href="#" download="cleaned.mp4" class="px-5 py-2 rounded-xl bg-black text-white hover:bg-gray-800 pointer-events-none opacity-50">Download</a>
+          <button id="btnToggleLogs" class="px-4 py-2 rounded-xl border border-gray-200 hover:bg-gray-100">Show details</button>
           <span id="apiHealthOut" class="text-xs text-gray-600">Backend: auto-detected</span>
         </div>
-        <div id="logsBox" class="mt-4 text-xs text-gray-500 whitespace-pre-wrap"></div>
+        <div id="logsBox" class="mt-2 text-xs text-gray-500 whitespace-pre-wrap max-h-36 overflow-y-auto hidden"></div>
       </div>
     </section>
 
@@ -210,11 +211,24 @@
     const btnDownload = $("btnDownload");
     const logsBox = $("logsBox");
     const apiHealthOut = $("apiHealthOut");
+    const btnToggleLogs = $("btnToggleLogs");
 
     // Show backend base
     apiHealthOut.textContent = "Backend: " + (API_BASE || "(relative)");
     if (API_BASE.includes("dashboard.render.com")) {
       console.warn("API_BASE points to Render dashboard; use your onrender.com service URL.");
+    }
+    if (btnToggleLogs) {
+      btnToggleLogs.addEventListener("click", () => {
+        const hidden = logsBox.classList.contains("hidden");
+        if (hidden) {
+          logsBox.classList.remove("hidden");
+          btnToggleLogs.textContent = "Hide details";
+        } else {
+          logsBox.classList.add("hidden");
+          btnToggleLogs.textContent = "Show details";
+        }
+      });
     }
 
     // Drag & drop
