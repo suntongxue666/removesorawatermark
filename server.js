@@ -69,20 +69,28 @@ async function uploadToReplicate(fileBuffer, filename) {
     lower.endsWith(".mp4") ? "video/mp4" :
     "video/mp4";
 
-  // 1) 优先：multipart 直传 /v1/files（Node 环境使用 form-data）
+  // 1) 优先：multipart 直传 /v1/files（Node 环境使用 form-data，并显式设置 headers）
   try {
     const fd = new FormData();
     fd.append("file", fileBuffer, {
       filename: filename || "upload.mp4",
       contentType
     });
+    // 合并 form-data 生成的 Content-Type（含 boundary）
+    const headers = fd.getHeaders({ Authorization: `Bearer ${REPLICATE_API_TOKEN}` });
+    // 计算 Content-Length，部分服务器要求
+    try {
+      const len = await new Promise((resolve, reject) => {
+        fd.getLength((err, length) => (err ? reject(err) : resolve(length)));
+      });
+      headers["Content-Length"] = String(len);
+    } catch (_) {
+      // 忽略长度计算失败，继续尝试
+    }
 
     const resp = await fetch("https://api.replicate.com/v1/files", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${REPLICATE_API_TOKEN}`
-        // 不手动设置 Content-Type，node-fetch 会携带 multipart 边界
-      },
+      headers,
       body: fd
     });
 
@@ -151,7 +159,36 @@ async function uploadToReplicate(fileBuffer, filename) {
     console.error("Replicate signed PUT upload error:", err?.message || err);
   }
 
-  // 3) 回退：tmpfiles.org（稳定性比 transfer.sh 更高）
+  // 3) 回退：catbox.moe（稳定直链，可匿名访问）
+  try {
+    const fdCat = new FormData();
+    fdCat.append("reqtype", "fileupload");
+    fdCat.append("fileToUpload", fileBuffer, {
+      filename: filename || "upload.mp4",
+      contentType
+    });
+    const headersCat = fdCat.getHeaders();
+    const respCat = await fetch("https://catbox.moe/user/api.php", {
+      method: "POST",
+      headers: headersCat,
+      body: fdCat
+    });
+    if (!respCat.ok) {
+      const text = await respCat.text().catch(() => "");
+      throw new Error(`catbox upload failed: ${respCat.status} ${text}`);
+    }
+    const catUrl = (await respCat.text()).trim().replace(/^http:\/\//, "https://");
+    // 返回一般为 https://files.catbox.moe/xxxxxx.mp4
+    if (catUrl && /^https:\/\/files\.catbox\.moe\//.test(catUrl)) {
+      console.log("catbox upload ok ->", catUrl);
+      return catUrl;
+    }
+    console.warn("catbox upload returned unexpected url:", catUrl);
+  } catch (e) {
+    console.error("catbox upload error:", e?.message || e);
+  }
+
+  // 4) 回退：tmpfiles.org（较稳定的匿名直链）
   try {
     const fd2 = new FormData();
     fd2.append("file", fileBuffer, {
@@ -160,6 +197,7 @@ async function uploadToReplicate(fileBuffer, filename) {
     });
     const r2 = await fetch("https://tmpfiles.org/api/v1/upload", {
       method: "POST",
+      headers: fd2.getHeaders(),
       body: fd2
     });
     if (!r2.ok) {
@@ -191,7 +229,7 @@ async function uploadToReplicate(fileBuffer, filename) {
     console.error("tmpfiles upload error:", e?.message || e);
   }
 
-  // 4) 最后回退：transfer.sh（若 Render 网络允许）
+  // 5) 最后回退：transfer.sh（若 Render 网络允许）
   try {
     const rawName = (filename || "upload.mp4").toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9._-]/g, "-");
     const safeName = encodeURIComponent(rawName);
@@ -215,7 +253,7 @@ async function uploadToReplicate(fileBuffer, filename) {
     console.error("transfer.sh upload error:", e?.message || e);
   }
 
-  throw new Error("All upload strategies failed (Replicate multipart, signed PUT, tmpfiles.org, transfer.sh).");
+  throw new Error("All upload strategies failed (Replicate multipart, signed PUT, catbox.moe, tmpfiles.org, transfer.sh).");
 }
 
 // Start a prediction and poll until completed
