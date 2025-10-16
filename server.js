@@ -209,6 +209,7 @@ async function runPredictionWithUrl(videoUrl, onLog = () => {}) {
   onLog(`input: keys=${Object.keys(body.input).join(",")} video=${videoUrl}`);
   console.log("Starting Replicate prediction -> endpoint:", endpoint, "input keys:", Object.keys(body.input));
 
+  const startReqTime = Date.now();
   const startResp = await fetch(endpoint, {
     method: "POST",
     headers: {
@@ -229,8 +230,11 @@ async function runPredictionWithUrl(videoUrl, onLog = () => {}) {
 
   let status = startData.status;
   let lastData = startData;
-
-  const startedAt = Date.now();
+  
+  // timing markers for prediction lifecycle
+  const startedAt = Date.now(); // when prediction created
+  let firstProcessingAt = null;
+  let succeededAt = null;
   const timeoutMs = 10 * 60 * 1000; // 10 minutes safety timeout
 
   while (["queued", "starting", "processing"].includes(status)) {
@@ -255,13 +259,30 @@ async function runPredictionWithUrl(videoUrl, onLog = () => {}) {
     lastData = await pollResp.json();
     status = lastData.status;
     onLog(`status: ${status}`);
+    // capture first time we see processing
+    if (status === "processing" && !firstProcessingAt) {
+      firstProcessingAt = Date.now();
+      onLog(`firstProcessingAt: ${new Date(firstProcessingAt).toISOString()}`);
+    }
   }
 
   if (status !== "succeeded") {
     throw new Error(`Prediction ended with status: ${status}, error: ${lastData.error || "unknown"}`);
   }
-
-  return lastData; // contains output
+  
+  succeededAt = Date.now();
+  onLog(`succeededAt: ${new Date(succeededAt).toISOString()}`);
+  // attach timing info to returned data for caller
+  lastData.__timing = {
+    startedAt: new Date(startedAt).toISOString(),
+    firstProcessingAt: firstProcessingAt ? new Date(firstProcessingAt).toISOString() : null,
+    succeededAt: new Date(succeededAt).toISOString(),
+    durationsMs: {
+      timeToFirstProcessing: firstProcessingAt ? (firstProcessingAt - startedAt) : null,
+      timeToSucceed: succeededAt - startedAt
+    }
+  };
+  return lastData; // contains output and __timing
 }
 
 // Main endpoint: supports either pasted URL or file upload
