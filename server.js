@@ -360,6 +360,43 @@ app.get("/api/download", async (req, res) => {
   }
 });
 
+app.post("/api/track", (req, res) => {
+  try {
+    const body = req.body || {};
+    const entry = {
+      filename: body.filename || body.name || null,
+      inputDuration: body.duration || null,
+      outputUrl: body.outputUrl || body.output || null,
+      timestamp: new Date().toISOString(),
+      ip: req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress || null
+    };
+    const statsPath = path.join(process.cwd(), "stats.json");
+    let arr = [];
+    try {
+      if (fs.existsSync(statsPath)) {
+        const raw = fs.readFileSync(statsPath, "utf8");
+        arr = JSON.parse(raw || "[]");
+        if (!Array.isArray(arr)) arr = [];
+      }
+    } catch (e) {
+      console.error("read stats.json error:", e?.message || e);
+      arr = [];
+    }
+    arr.push(entry);
+    // keep at most 10000 entries
+    if (arr.length > 10000) arr = arr.slice(arr.length - 10000);
+    try {
+      fs.writeFileSync(statsPath, JSON.stringify(arr, null, 2), "utf8");
+    } catch (e) {
+      console.error("write stats.json error:", e?.message || e);
+    }
+    return res.json({ ok: true });
+  } catch (e) {
+    console.error("track error:", e?.message || e);
+    return res.status(500).json({ error: "track failed" });
+  }
+});
+
 app.get("/sitemap.htm", (req, res) => {
   try {
     const pubDir = path.join(process.cwd(), "public");
@@ -420,6 +457,27 @@ app.get("/sitemap.htm", (req, res) => {
     return res.status(200).send(html);
   } catch (e) {
     return res.status(500).send("Failed to build sitemap: " + (e?.message || e));
+  }
+});
+
+app.get("/api/stats", (req, res) => {
+  try {
+    const statsPath = path.join(process.cwd(), "stats.json");
+    if (!fs.existsSync(statsPath)) {
+      return res.json({ ok: true, count: 0, entries: [] });
+    }
+    const raw = fs.readFileSync(statsPath, "utf8");
+    const arr = JSON.parse(raw || "[]");
+    // return a small payload summary + last 100 entries
+    const last = arr.slice(-100);
+    return res.json({
+      ok: true,
+      count: Array.isArray(arr) ? arr.length : 0,
+      lastEntries: last
+    });
+  } catch (e) {
+    console.error("stats read error:", e?.message || e);
+    return res.status(500).json({ ok: false, error: "failed to read stats" });
   }
 });
 
