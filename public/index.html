@@ -9,7 +9,8 @@
   <meta name="keywords" content="remove sora watermark,sora watermark remover,sora watermark,remove sora watermark,ai watermark remover,video watermark removal,sora video watermark,free watermark remover,watermark removal,sora video tool,remove video watermark,ai video watermark remover">
   <link rel="sitemap" type="text/html" title="Sitemap" href="/sitemap.htm">
   <meta name="api-base" content="https://removesorawatermark.onrender.com">
-  <link rel="icon" href="https://res.cloudinary.com/dygx9d3gi/image/upload/v1760557876/removesora-icon120_lfwtxk.png">
+  <link rel="icon" href="https://res.cloudinary.com/dygx9d3gi/image/upload/v1760557876/removesora-icon120_lfwtxk.png" type="image/png" sizes="120x120">
+  <link rel="shortcut icon" href="https://res.cloudinary.com/dygx9d3gi/image/upload/v1760557876/removesora-icon120_lfwtxk.png" type="image/png" sizes="120x120">
   <style>
     .glass { background: rgba(255,255,255,0.75); backdrop-filter: saturate(180%) blur(10px); }
     .badge { border-radius: 10px; padding: 4px 10px; font-size: 12px; font-weight: 600; color: #fff; }
@@ -78,9 +79,13 @@
           </div>
           <video id="uploadPreview" class="hidden w-full h-full bg-black rounded-xl object-contain" controls muted playsinline></video>
         </div>
-        <div class="mt-4 flex items-center gap-3 justify-end">
-          <button id="btnSubmitUpload" class="px-5 py-2 rounded-xl bg-black text-white hover:bg-gray-800">Remove watermark</button>
-          <button id="btnClearFile" class="px-4 py-2 rounded-xl border border-gray-200 hover:bg-gray-100">Clear</button>
+        <div class="mt-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <button id="btnSubmitUpload" class="px-5 py-2 rounded-xl bg-black text-white hover:bg-gray-800">Remove watermark</button>
+          </div>
+          <div class="flex items-center gap-3">
+            <button id="btnClearFile" class="px-4 py-2 rounded-xl border border-gray-200 hover:bg-gray-100">Clear</button>
+          </div>
         </div>
         <!-- Progress -->
         <div class="mt-4">
@@ -105,9 +110,13 @@
             <p class="mt-3 text-sm text-gray-700">Upload a video to start</p>
           </div>
         </div>
-        <div class="mt-4 flex items-center gap-3 justify-end">
-          <a id="btnDownload" href="#" download="cleaned.mp4" class="px-5 py-2 rounded-xl bg-black text-white hover:bg-gray-800 pointer-events-none opacity-50">Download</a>
-          <button id="btnToggleLogs" class="px-4 py-2 rounded-xl border border-gray-200 hover:bg-gray-100">Show details</button>
+        <div class="mt-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <a id="btnDownload" href="#" download="cleaned.mp4" class="px-5 py-2 rounded-xl bg-black text-white hover:bg-gray-800 pointer-events-none opacity-50">Download</a>
+          </div>
+          <div class="flex items-center gap-3">
+            <button id="btnToggleLogs" class="px-4 py-2 rounded-xl border border-gray-200 hover:bg-gray-100">Show details</button>
+          </div>
         </div>
         <div id="logsBox" class="mt-2 text-xs text-gray-500 whitespace-pre-wrap max-h-36 overflow-y-auto hidden"></div>
       </div>
@@ -133,8 +142,8 @@
         <h2 class="text-base font-semibold">Before & After showcase</h2>
         <p class="mt-2 text-sm text-gray-600">Compare original and cleaned output side-by-side.</p>
         <div class="mt-4 grid md:grid-cols-2 gap-4">
-          <video class="w-full h-64 bg-black rounded-xl object-contain" controls></video>
-          <video class="w-full h-64 bg-black rounded-xl object-contain" controls></video>
+          <video id="showcaseBefore" class="w-full h-[32rem] bg-black rounded-xl object-contain mx-auto my-auto" controls src="https://res.cloudinary.com/dygx9d3gi/video/upload/v1760632357/RemoveSoar-case1_wkqlgt.mp4"></video>
+          <video id="showcaseAfter" class="w-full h-[32rem] bg-black rounded-xl object-contain mx-auto my-auto" controls src="https://res.cloudinary.com/dygx9d3gi/video/upload/v1760632357/RemoveSoar-case1-cleaned_s5405n.mp4"></video>
         </div>
       </div>
     </section>
@@ -248,7 +257,7 @@
       toast.classList.remove("hidden");
       toast.classList.add("flex");
       if (toastTimer) clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => hideToast(), 3000);
+      toastTimer = setTimeout(() => hideToast(), 5000);
     }
     if (toastClose) {
       toastClose.addEventListener("click", hideToast);
@@ -260,7 +269,7 @@
       stageTimers.forEach((t) => clearTimeout(t));
       stageTimers = [];
     }
-    function showToastMsg(message, duration = 3000) {
+    function showToastMsg(message, duration = 5000) {
       const el = toast;
       if (!el) return;
       const span = el.querySelector("span");
@@ -340,13 +349,13 @@
       // schedule friendly stage tips
       clearStageTimers();
       stageTimers.push(setTimeout(() => {
-        showToastMsg("Queued at the moment. Still processing.", 3000);
+        showToastMsg("Queued at the moment. Still processing.", 5000);
       }, 60000));
       stageTimers.push(setTimeout(() => {
-        showToastMsg("High demand now. AI GPU queue is busy.", 3000);
+        showToastMsg("High demand now. AI GPU queue is busy.", 5000);
       }, 90000));
       stageTimers.push(setTimeout(() => {
-        showToastMsg("AI Resources tight. It'll be finished soon.", 3000);
+        showToastMsg("AI Resources tight. It'll be finished soon.", 5000);
       }, 120000));
     }
     function finishProgress() {
