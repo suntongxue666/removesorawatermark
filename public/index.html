@@ -24,6 +24,13 @@
   </script>
 </head>
 <body class="min-h-screen bg-white text-gray-900">
+  <!-- Success Toast -->
+  <div id="toastSuccess" class="fixed inset-0 hidden items-center justify-center p-4 z-50">
+    <div class="pointer-events-auto bg-black text-white rounded-xl shadow-xl px-4 py-3 flex items-center gap-3">
+      <span class="text-sm">Remove watermark successfully</span>
+      <button id="toastClose" class="ml-2 px-2 py-1 rounded-md bg-white/10 hover:bg-white/20 text-xs">Close</button>
+    </div>
+  </div>
   <!-- Header -->
   <header class="w-full">
     <div class="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
@@ -64,7 +71,7 @@
           <input id="fileInput" type="file" accept="video/mp4,video/quicktime,video/*" class="hidden" />
           <div id="uploadEmpty" class="flex flex-col items-center">
             <div class="h-12 w-12 border-2 border-gray-400 rounded-lg flex items-center justify-center">
-              <span class="text-2xl text-gray-600">↑</span>
+              <span class="text-2xl text-gray-600">+</span>
             </div>
             <p class="mt-3 text-sm text-gray-700">Click to browse<br/>or drop the video here</p>
             <p class="mt-2 text-xs text-gray-500">MOV/MP4, ≤10s, ≤30MB</p>
@@ -74,7 +81,6 @@
         <div class="mt-4 flex items-center gap-3">
           <button id="btnSubmitUpload" class="px-5 py-2 rounded-xl bg-black text-white hover:bg-gray-800">Remove watermark</button>
           <button id="btnClearFile" class="px-4 py-2 rounded-xl border border-gray-200 hover:bg-gray-100">Clear</button>
-          <span id="uploadInfo" class="text-xs text-gray-500">File ≤30MB & duration ≤10s</span>
         </div>
         <!-- Progress -->
         <div class="mt-4">
@@ -197,6 +203,26 @@
     const logsBox = $("logsBox");
     const btnToggleLogs = $("btnToggleLogs");
 
+    // Toast helpers
+    const toast = document.getElementById("toastSuccess");
+    const toastClose = document.getElementById("toastClose");
+    let toastTimer = null;
+    function hideToast() {
+      if (!toast) return;
+      toast.classList.add("hidden");
+      toast.classList.remove("flex");
+    }
+    function showToastSuccess() {
+      if (!toast) return;
+      toast.classList.remove("hidden");
+      toast.classList.add("flex");
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => hideToast(), 3000);
+    }
+    if (toastClose) {
+      toastClose.addEventListener("click", hideToast);
+    }
+
 
     // Drag & drop
     dropZone.addEventListener("click", () => fileInput.click());
@@ -252,11 +278,12 @@
       let p = 1;
       progressBar.style.width = p + "%";
       progressText.textContent = "Progress: " + p + "%";
+      // 放慢至原速度的约70%：600ms -> 860ms
       progressTimer = setInterval(() => {
         p = Math.min(90, p + 2);
         progressBar.style.width = p + "%";
         progressText.textContent = "Progress: " + p + "%";
-      }, 600);
+      }, 860);
     }
     function finishProgress() {
       if (progressTimer) clearInterval(progressTimer);
@@ -306,6 +333,7 @@
           logsBox.textContent = data.logs;
         }
         finishProgress();
+        showToastSuccess();
       } catch (e) {
         alert(e.message || "Error");
         logsBox.textContent = (e && e.message) ? e.message : String(e);
