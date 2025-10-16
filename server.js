@@ -2,6 +2,8 @@ import express from "express";
 import multer from "multer";
 import fetch from "node-fetch";
 import FormData from "form-data";
+import fs from "fs";
+import path from "path";
 
 const app = express();
 
@@ -334,6 +336,69 @@ app.get("/api/download", async (req, res) => {
     }
   } catch (e) {
     res.status(500).send(e?.message || "download proxy error");
+  }
+});
+
+app.get("/sitemap.htm", (req, res) => {
+  try {
+    const pubDir = path.join(process.cwd(), "public");
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+
+    function walk(dir) {
+      const out = [];
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      for (const e of entries) {
+        const full = path.join(dir, e.name);
+        if (e.isDirectory()) {
+          out.push(...walk(full));
+        } else if (e.isFile() && e.name.toLowerCase().endsWith(".html")) {
+          const rel = path.relative(pubDir, full).replace(/\\/g, "/");
+          // 将 index.html 映射为根路径
+          const urlPath = rel === "index.html" ? "/" : `/${rel}`;
+          out.push({ rel, url: baseUrl + urlPath });
+        }
+      }
+      return out;
+    }
+
+    const pages = walk(pubDir)
+      // 排序：index 首页优先，其余按字母序
+      .sort((a, b) => {
+        if (a.rel === "index.html") return -1;
+        if (b.rel === "index.html") return 1;
+        return a.rel.localeCompare(b.rel);
+      });
+
+    // 生成简洁 HTML 站点地图
+    const html = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>HTML Sitemap - Remove Sora Watermark</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="index,follow">
+  <style>
+    body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;line-height:1.6;margin:24px;color:#111}
+    h1{font-size:22px;margin:0 0 12px}
+    ul{margin:12px 0;padding-left:18px}
+    li{margin:6px 0}
+    small{color:#666}
+    .path{color:#555;font-size:12px;margin-left:8px}
+  </style>
+  <link rel="canonical" href="${baseUrl}/sitemap.htm">
+</head>
+<body>
+  <h1>HTML Sitemap</h1>
+  <p><small>Auto-generated at ${new Date().toISOString()}</small></p>
+  <ul>
+    ${pages.map(p => `<li><a href="${p.url}">${p.url}</a><span class="path">(${p.rel})</span></li>`).join("\n    ")}
+  </ul>
+</body>
+</html>`;
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    return res.status(200).send(html);
+  } catch (e) {
+    return res.status(500).send("Failed to build sitemap: " + (e?.message || e));
   }
 });
 
