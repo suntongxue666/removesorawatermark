@@ -99,7 +99,7 @@
           </div>
         </div>
         <div class="mt-4 flex items-center gap-3">
-          <a id="btnDownload" href="#" download="cleaned.mp4" class="px-5 py-2 rounded-xl bg-black text-white hover:bg-gray-800 pointer-events-none opacity-50">Download</a>
+          <a id="btnDownload" href="#" download="cleaned.mp4" target="_blank" rel="noopener" class="px-5 py-2 rounded-xl bg-black text-white hover:bg-gray-800 pointer-events-none opacity-50">Download</a>
           <button id="btnToggleLogs" class="px-4 py-2 rounded-xl border border-gray-200 hover:bg-gray-100">Show details</button>
         </div>
         <div id="logsBox" class="mt-2 text-xs text-gray-500 whitespace-pre-wrap max-h-36 overflow-y-auto hidden"></div>
@@ -320,7 +320,9 @@
       afterVideo.classList.remove("hidden");
       afterVideo.src = url;
       btnDownload.classList.remove("pointer-events-none", "opacity-50");
-      btnDownload.href = url;
+      // 使用后端下载代理以触发浏览器直接保存；若跨域不同源，target=_blank 将在新标签触发下载
+      const dl = apiUrl("/api/download?url=" + encodeURIComponent(url) + "&filename=cleaned.mp4");
+      btnDownload.href = dl;
     }
 
     function resetResult() {

@@ -189,7 +189,7 @@ async function uploadToReplicate(fileBuffer, filename) {
 }
 
 // Start a prediction and poll until completed
-async function runPredictionWithUrl(videoUrl) {
+async function runPredictionWithUrl(videoUrl, onLog = () => {}) {
   // 简化为该模型文档示例：仅传 input.video
   const body = {
     input: {
@@ -203,6 +203,8 @@ async function runPredictionWithUrl(videoUrl) {
       ? `https://api.replicate.com/v1/models/${REPLICATE_MODEL_SLUG}/versions/${REPLICATE_VERSION_ID || REPLICATE_MODEL_VERSION}/predictions`
       : "https://api.replicate.com/v1/predictions";
 
+  onLog(`start: POST ${endpoint}`);
+  onLog(`input: keys=${Object.keys(body.input).join(",")} video=${videoUrl}`);
   console.log("Starting Replicate prediction -> endpoint:", endpoint, "input keys:", Object.keys(body.input));
 
   const startResp = await fetch(endpoint, {
@@ -213,6 +215,7 @@ async function runPredictionWithUrl(videoUrl) {
     },
     body: JSON.stringify(body)
   });
+  onLog(`start: response ${startResp.status}`);
 
   if (!startResp.ok) {
     const text = await startResp.text();
@@ -230,9 +233,11 @@ async function runPredictionWithUrl(videoUrl) {
 
   while (["queued", "starting", "processing"].includes(status)) {
     if (Date.now() - startedAt > timeoutMs) {
+      onLog("error: timed out");
       throw new Error("Prediction timed out.");
     }
     await new Promise((r) => setTimeout(r, 2000));
+    onLog(`poll: GET /v1/predictions/${predictionId}`);
 
     const pollResp = await fetch(`https://api.replicate.com/v1/predictions/${predictionId}`, {
       headers: {
@@ -242,10 +247,12 @@ async function runPredictionWithUrl(videoUrl) {
 
     if (!pollResp.ok) {
       const text = await pollResp.text();
+      onLog(`poll: response ${pollResp.status} ${String(text).slice(0,200)}`);
       throw new Error(`Replicate prediction poll failed: ${pollResp.status} ${text}`);
     }
     lastData = await pollResp.json();
     status = lastData.status;
+    onLog(`status: ${status}`);
   }
 
   if (status !== "succeeded") {
@@ -267,11 +274,12 @@ app.post("/api/remove", upload.single("file"), async (req, res) => {
       const videoUrl = String(req.body.url).trim();
       if (!videoUrl) return res.status(400).json({ error: "Invalid URL." });
 
-      const prediction = await runPredictionWithUrl(videoUrl);
+      const logs = [];
+      const prediction = await runPredictionWithUrl(videoUrl, (m) => logs.push(m));
       return res.json({
         status: prediction.status,
         output: prediction.output,
-        logs: prediction.logs || null
+        logs: [...logs, ...(prediction.logs ? [String(prediction.logs)] : [])].join("\n")
       });
     }
 
@@ -281,13 +289,15 @@ app.post("/api/remove", upload.single("file"), async (req, res) => {
       if (!file.buffer || !file.originalname) {
         return res.status(400).json({ error: "Invalid file upload." });
       }
+      const logs = [];
       // Client side already limits to 30MB, we additionally rely on multer limit.
       const tempUrl = await uploadToReplicate(file.buffer, file.originalname);
-      const prediction = await runPredictionWithUrl(tempUrl);
+      logs.push(`upload: ok -> ${tempUrl}`);
+      const prediction = await runPredictionWithUrl(tempUrl, (m) => logs.push(m));
       return res.json({
         status: prediction.status,
         output: prediction.output,
-        logs: prediction.logs || null
+        logs: [...logs, ...(prediction.logs ? [String(prediction.logs)] : [])].join("\n")
       });
     }
 
@@ -295,6 +305,35 @@ app.post("/api/remove", upload.single("file"), async (req, res) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: err.message || "Server error" });
+  }
+});
+
+app.get("/api/download", async (req, res) => {
+  try {
+    const url = String(req.query.url || "").trim();
+    const filename = String(req.query.filename || "cleaned.mp4").replace(/[^a-zA-Z0-9._-]/g, "_");
+    if (!url) return res.status(400).send("Missing url");
+
+    const upstream = await fetch(url);
+    if (!upstream.ok) {
+      const text = await upstream.text().catch(() => "");
+      return res.status(502).send(`Upstream error ${upstream.status} ${text.slice(0, 200)}`);
+    }
+
+    res.setHeader("Content-Type", upstream.headers.get("content-type") || "application/octet-stream");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+    if (upstream.body && upstream.body.pipe) {
+      upstream.body.pipe(res);
+    } else if (upstream.arrayBuffer) {
+      const buf = Buffer.from(await upstream.arrayBuffer());
+      res.send(buf);
+    } else {
+      const buf = await upstream.buffer();
+      res.send(buf);
+    }
+  } catch (e) {
+    res.status(500).send(e?.message || "download proxy error");
   }
 });
 
