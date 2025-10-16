@@ -34,10 +34,10 @@
   <!-- Header -->
   <header class="w-full">
     <div class="max-w-6xl mx-auto px-6 py-6 flex items-center justify-between">
-      <div class="flex items-center gap-3">
+      <a href="index.html" class="flex items-center gap-3">
         <img src="https://res.cloudinary.com/dygx9d3gi/image/upload/v1760557876/removesora-icon120_lfwtxk.png" alt="Logo" class="h-6 w-6 rounded-md">
         <span class="font-semibold text-base">Removesorawatermark</span>
-      </div>
+      </a>
       <nav class="text-sm text-gray-600">
         <a href="#" class="hover:text-black mr-6">Home</a>
         <a href="#features" class="hover:text-black mr-6">Feature</a>
@@ -78,7 +78,7 @@
           </div>
           <video id="uploadPreview" class="hidden w-full h-full bg-black rounded-xl object-contain" controls muted playsinline></video>
         </div>
-        <div class="mt-4 flex items-center gap-3">
+        <div class="mt-4 flex items-center gap-3 justify-end">
           <button id="btnSubmitUpload" class="px-5 py-2 rounded-xl bg-black text-white hover:bg-gray-800">Remove watermark</button>
           <button id="btnClearFile" class="px-4 py-2 rounded-xl border border-gray-200 hover:bg-gray-100">Clear</button>
         </div>
@@ -105,8 +105,8 @@
             <p class="mt-3 text-sm text-gray-700">Upload a video to start</p>
           </div>
         </div>
-        <div class="mt-4 flex items-center gap-3">
-          <a id="btnDownload" href="#" download="cleaned.mp4" target="_blank" rel="noopener" class="px-5 py-2 rounded-xl bg-black text-white hover:bg-gray-800 pointer-events-none opacity-50">Download</a>
+        <div class="mt-4 flex items-center gap-3 justify-end">
+          <a id="btnDownload" href="#" download="cleaned.mp4" class="px-5 py-2 rounded-xl bg-black text-white hover:bg-gray-800 pointer-events-none opacity-50">Download</a>
           <button id="btnToggleLogs" class="px-4 py-2 rounded-xl border border-gray-200 hover:bg-gray-100">Show details</button>
         </div>
         <div id="logsBox" class="mt-2 text-xs text-gray-500 whitespace-pre-wrap max-h-36 overflow-y-auto hidden"></div>
@@ -177,6 +177,7 @@
         <div class="flex gap-6">
           <a href="agreement.html" class="hover:text-black">User Agreement</a>
           <a href="privacy.html" class="hover:text-black">Privacy Policy</a>
+          <a href="/sitemap.htm" class="hover:text-black">Sitemap</a>
         </div>
       </div>
       <p class="mt-4 text-xs text-gray-500">Disclaimer: This tool is for educational and research purposes only. Ensure you have rights to process the video. We do not claim ownership of any content and are not affiliated with Sora or its authors.</p>
@@ -203,6 +204,36 @@
     const logsBox = $("logsBox");
     const btnToggleLogs = $("btnToggleLogs");
 
+    // Download without page flash: fetch Blob and save
+    async function directDownload(url, filename) {
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error("Download failed: " + resp.status);
+      const blob = await resp.blob();
+      const dlUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = dlUrl;
+      a.download = filename || "cleaned.mp4";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(dlUrl), 1500);
+    }
+    if (btnDownload) {
+      btnDownload.addEventListener("click", async (e) => {
+        const href = btnDownload.getAttribute("href");
+        if (!href || href === "#") return; // disabled state
+        e.preventDefault();
+        try {
+          // 如果是代理下载则直接走；否则也能下载跨域资源
+          await directDownload(href, "cleaned.mp4");
+        } catch (err) {
+          console.error(err);
+          // 兜底：如果失败，退回到浏览器默认行为
+          window.open(href, "_blank", "noopener");
+        }
+      });
+    }
+
     // Toast helpers
     const toast = document.getElementById("toastSuccess");
     const toastClose = document.getElementById("toastClose");
@@ -221,6 +252,27 @@
     }
     if (toastClose) {
       toastClose.addEventListener("click", hideToast);
+    }
+
+    // Stage tips: friendly time-based toasts without interrupting the flow
+    let stageTimers = [];
+    function clearStageTimers() {
+      stageTimers.forEach((t) => clearTimeout(t));
+      stageTimers = [];
+    }
+    function showToastMsg(message, duration = 3000) {
+      const el = toast;
+      if (!el) return;
+      const span = el.querySelector("span");
+      const prev = span ? span.textContent : "";
+      if (span) span.textContent = message || "";
+      el.classList.remove("hidden");
+      el.classList.add("flex");
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        hideToast();
+        if (span) span.textContent = prev; // restore previous success text
+      }, duration);
     }
 
 
@@ -284,14 +336,28 @@
         progressBar.style.width = p + "%";
         progressText.textContent = "Progress: " + p + "%";
       }, 860);
+
+      // schedule friendly stage tips
+      clearStageTimers();
+      stageTimers.push(setTimeout(() => {
+        showToastMsg("Queued at the moment. Still processing.", 3000);
+      }, 60000));
+      stageTimers.push(setTimeout(() => {
+        showToastMsg("High demand now. AI GPU queue is busy.", 3000);
+      }, 90000));
+      stageTimers.push(setTimeout(() => {
+        showToastMsg("AI Resources tight. It'll be finished soon.", 3000);
+      }, 120000));
     }
     function finishProgress() {
       if (progressTimer) clearInterval(progressTimer);
+      clearStageTimers();
       progressBar.style.width = "100%";
       progressText.textContent = "Progress: 100%";
     }
     function resetProgress() {
       if (progressTimer) clearInterval(progressTimer);
+      clearStageTimers();
       progressBar.style.width = "0%";
       progressText.textContent = "Progress: 0%";
     }
