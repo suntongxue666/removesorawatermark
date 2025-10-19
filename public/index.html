@@ -231,6 +231,8 @@
     const btnDownload = $("btnDownload");
     const logsBox = $("logsBox");
     const btnToggleLogs = $("btnToggleLogs");
+    // 保存当前选择的文件（支持拖拽与点击选择的统一提交）
+    let currentFile = null;
 
     // Download without page flash: fetch Blob and save
     async function directDownload(url, filename) {
@@ -305,14 +307,70 @@
 
 
     // Drag & drop
-    dropZone.addEventListener("click", () => fileInput.click());
+    dropZone.addEventListener("click", async () => {
+      // 优先使用原生 showPicker（Chrome 支持更好）
+      if (typeof fileInput.showPicker === "function") {
+        try {
+          await fileInput.showPicker();
+          return;
+        } catch (_) {
+          // 回退到 click 方案
+        }
+      }
+      try {
+        // 某些浏览器不允许对 display:none 的文件输入触发 click，临时移出隐藏
+        const prevClass = fileInput.className;
+        const prevStyle = { position: fileInput.style.position, left: fileInput.style.left, top: fileInput.style.top, opacity: fileInput.style.opacity };
+        fileInput.classList.remove("hidden");
+        fileInput.style.position = "fixed";
+        fileInput.style.left = "-9999px";
+        fileInput.style.top = "0";
+        fileInput.style.opacity = "0";
+        fileInput.click();
+        // 轻微延迟后恢复隐藏状态，避免影响布局/可访问性
+        setTimeout(() => {
+          fileInput.className = prevClass;
+          fileInput.style.position = prevStyle.position || "";
+          fileInput.style.left = prevStyle.left || "";
+          fileInput.style.top = prevStyle.top || "";
+          fileInput.style.opacity = prevStyle.opacity || "";
+        }, 0);
+      } catch (e) {
+        // 兜底：动态创建一个临时文件输入
+        const temp = document.createElement("input");
+        temp.type = "file";
+        temp.accept = fileInput.accept || "video/*";
+        temp.style.position = "fixed";
+        temp.style.left = "-9999px";
+        document.body.appendChild(temp);
+        temp.addEventListener("change", () => {
+          const f = temp.files?.[0];
+          if (f) handleFileSelected(f);
+          temp.remove();
+        });
+        temp.click();
+      }
+    });
     dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("bg-gray-50"); });
     dropZone.addEventListener("dragleave", () => dropZone.classList.remove("bg-gray-50"));
     dropZone.addEventListener("drop", (e) => {
       e.preventDefault();
       dropZone.classList.remove("bg-gray-50");
-      const file = e.dataTransfer.files?.[0];
-      if (file) handleFileSelected(file);
+      let file = null;
+      const dt = e.dataTransfer;
+      if (dt?.items && dt.items.length) {
+        // 优先从 items 取文件，兼容部分 Chrome 拖拽行为
+        const item = Array.from(dt.items).find((it) => it.kind === "file");
+        if (item) file = item.getAsFile();
+      }
+      if (!file && dt?.files && dt.files.length) {
+        file = dt.files[0];
+      }
+      if (file) {
+        handleFileSelected(file);
+      } else {
+        alert("This browser blocked the dragged item. Please click to choose a video file.");
+      }
     });
 
     fileInput.addEventListener("change", () => {
@@ -321,6 +379,7 @@
     });
 
     function handleFileSelected(file) {
+      currentFile = file;
       const maxSize = 30 * 1024 * 1024;
       if (file.size > maxSize) {
         alert("File too large. Keep under 30MB.");
@@ -332,18 +391,20 @@
       uploadPreview.classList.remove("hidden");
       uploadPreview.src = url;
       uploadPreview.onloadedmetadata = () => {
-        if (uploadPreview.duration && uploadPreview.duration > 10.5) {
-          alert("Video too long. Keep under 10 seconds.");
-          fileInput.value = "";
-          uploadPreview.src = "";
-          uploadPreview.classList.add("hidden");
-          uploadEmpty.classList.remove("hidden");
-        }
+          if (uploadPreview.duration && uploadPreview.duration > 10.5) {
+            alert("Video too long. Keep under 10 seconds.");
+            fileInput.value = "";
+            currentFile = null;
+            uploadPreview.src = "";
+            uploadPreview.classList.add("hidden");
+            uploadEmpty.classList.remove("hidden");
+          }
       };
     }
 
     btnClearFile.addEventListener("click", () => {
       fileInput.value = "";
+      currentFile = null;
       uploadPreview.src = "";
       uploadPreview.classList.add("hidden");
       uploadEmpty.classList.remove("hidden");
@@ -396,7 +457,7 @@
     }
 
     btnSubmitUpload.addEventListener("click", async () => {
-      const file = fileInput.files?.[0];
+      const file = currentFile || fileInput.files?.[0];
       if (!file) {
         alert("Please choose a video file.");
         return;
