@@ -14,6 +14,15 @@
   <style>
     .glass { background: rgba(255,255,255,0.75); backdrop-filter: saturate(180%) blur(10px); }
     .badge { border-radius: 10px; padding: 4px 10px; font-size: 12px; font-weight: 600; color: #fff; }
+    /* Safari 竖屏视频海报不裁切 */
+    #posterBefore,
+    #posterAfter,
+    #posterBeforeMobile,
+    #posterAfterMobile {
+      background-size: contain !important;
+      background-repeat: no-repeat !important;
+      background-position: center !important;
+    }
   </style>
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-880Y82CR4N"></script>
@@ -68,13 +77,13 @@
       <!-- Upload Card -->
       <div class="rounded-2xl border border-gray-200 p-6">
         <h2 class="text-base font-semibold">Upload Video</h2>
-        <div id="dropZone" class="mt-4 rounded-xl border-2 border-dashed border-gray-300 p-6 text-center cursor-pointer h-72 overflow-hidden">
+        <div id="dropZone" role="button" tabindex="0" class="mt-4 rounded-xl border-2 border-dashed border-gray-300 p-6 text-center cursor-pointer h-72 overflow-hidden">
           <input id="fileInput" type="file" accept="video/mp4,video/quicktime,video/*" class="hidden" />
           <div id="uploadEmpty" class="flex flex-col items-center">
             <div class="h-12 w-12 border-2 border-gray-400 rounded-lg flex items-center justify-center">
               <span class="text-2xl text-gray-600">+</span>
             </div>
-            <p class="mt-3 text-sm text-gray-700">Click to browse<br/>or drop the video here</p>
+            <label for="fileInput" class="mt-3 text-sm text-gray-700 cursor-pointer">Click to browse<br/>or drop the video here</label>
             <p class="mt-2 text-xs text-gray-500">MOV/MP4, ≤10s, ≤30MB</p>
           </div>
           <video id="uploadPreview" class="hidden w-full h-full bg-black rounded-xl object-contain" controls muted playsinline></video>
@@ -353,6 +362,13 @@
     });
     dropZone.addEventListener("dragover", (e) => { e.preventDefault(); dropZone.classList.add("bg-gray-50"); });
     dropZone.addEventListener("dragleave", () => dropZone.classList.remove("bg-gray-50"));
+    // 键盘可用性：Enter/Space 触发文件选择
+    dropZone.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        dropZone.click();
+      }
+    });
     dropZone.addEventListener("drop", (e) => {
       e.preventDefault();
       dropZone.classList.remove("bg-gray-50");
